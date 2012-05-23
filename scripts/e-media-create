@@ -1,0 +1,440 @@
+#!/bin/bash
+# e-media-create - Automatically create a bootable SD cards from images
+#
+# Copyright (C) 2012 - ISEE 2007 SL
+#
+# Based on linaro-media-script by
+#   Copyright 2010 Robert Nelson <robertcnelson@gmail.com>
+#   Copyright 2010 Linaro
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License version 3 as published
+# by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# DESCRIPTION
+# 'e-media-create' is a tool that helps users create a new bootable SD cards
+# images.  Invoking it without any arguments will display help screens for
+# the 'e-media-create' command. Please use that interface for detailed help.
+#
+# AUTHORS
+# Enric Balletbo i Serra <eballetbo [at] iseebcn.com>
+#
+# TODO
+#   - do not run the script when the rootfs is in mmc.
+#   - create SD card downloading latest images (--download)
+
+set -e
+
+# include e-tools-functions
+if [ -f e-tools-functions ]; then
+	. e-tools-functions
+elif [ -f /lib/e-tools/e-tools-functions ]; then
+    . /lib/e-tools/e-tools-functions
+else
+	echo "Error: e-tools-functions not found."
+	exit 1
+fi
+
+# The revision number is imported from e-tools-functions file
+__VERSION__="0.1.${__REVISION__}"
+
+unset MMC MMC1 MMC2 MMC3 IMAGE_FILE MACHINE
+
+ensure_command() {
+	# ensure_command foo foo-package
+	which "$1" 2>/dev/null 1>/dev/null || (
+		echo "Install required command $1 from package $2, e.g. sudo apt-get install $2"
+		exit 1
+	)
+}
+
+# These commands are required
+ensure_command uuidgen uuid-runtime
+ensure_command parted parted
+ensure_command sfdisk util-linux
+ensure_command fdisk util-linux
+ensure_command wget wget
+ensure_command mkfs.ext3 e2fsprogs
+ensure_command mkfs.vfat dosfstools
+ensure_command realpath realpath
+
+# Defaults
+RFS=ext3
+ASSUME_YES="false"
+IMAGE_TYPE="denzil"
+# Partition labels
+BOOT_LABEL=boot
+RFS_LABEL=rootfs
+DATA_LABEL=data
+
+RFS_UUID=`uuidgen -r`
+HEADS=255
+SECTORS=63
+SECTORSIZE=512
+CYLINDER_ARG=""
+
+# Environment
+DIR=$PWD
+TMPDIR="$PWD/tmp-workdir"
+
+get_mmcs_by_id() {
+	for device in /dev/disk/by-id/*; do
+		if [ `realpath $device` = $MMC ]; then
+			if echo "$device" | grep -q -- "-part[0-9]*$"; then
+				echo "device $MMC must not be a partition part ($device)" 1>&2
+				exit 1
+			fi
+		for part_id in `ls "$device-part"*`; do
+			part=`realpath $part_id`
+			part_no=`echo $part_id | sed -e 's/.*-part//g'`
+			# echo "part $part_no found: $part_id" 1>&2
+			if test "$part_no" = 1; then
+				MMC1=$part
+			elif test "$part_no" = 2; then
+				MMC2=$part
+			elif test "$part_no" = 3; then
+				MMC3=$part
+			fi
+		done
+		break
+		fi
+	done
+}
+
+cleanup_sd() {
+	echo ""
+	echo "Umounting Partitions"
+	echo ""
+
+	for mmc in $MMC1 $MMC2 $MMC3; do
+		if test -n "$mmc"; then
+			sudo umount ${mmc} &> /dev/null || true
+		fi
+	done
+
+	if [ "${MMC}" ]; then
+		sudo parted -s ${MMC} mklabel msdos
+	fi
+}
+
+create_partitions() {
+	case $IMAGE_TYPE in
+		denzil)
+		# Create a VFAT partition of 9 cylinders which is about 64M
+		# and a linux partition of the rest
+		sudo sfdisk -D -H $HEADS -S $SECTORS $CYLINDER_ARG $MMC << THEEND
+,9,0x0C,*
+,,,-
+THEEND
+			;;
+		android)
+	# Create a VFAT partition of 9 cylinders which is about 64M,
+	# a linux partition of 90 cylinders which is about 640M
+	# and a VFAT partition for the rest
+	sudo sfdisk -D -H $HEADS -S $SECTORS $CYLINDER_ARG $MMC << THEEND
+,9,0x0C,*
+,90,,-
+,,0x0C,-
+THEEND
+			;;
+	esac
+}
+
+# Prepare sdcard partitions
+prepare_partitions() {
+	echo ""
+	echo "Umounting Partitions"
+	echo ""
+
+	# It looks like somehow automounts the partitions after we
+	# repartition a disk so we need to unmount them here to create the
+	# filesystem. As a HACK in some systems a small delay is required, we 
+	# should investigate a little more about this issue.
+	sleep 3
+	for mmc in $MMC1 $MMC2 $MMC3; do
+		if test -n "$mmc"; then
+			sudo umount ${mmc} &> /dev/null || true
+		fi
+	done
+
+	echo ""
+	echo "Formating Boot Partition"
+	echo ""
+	sudo mkfs.vfat -F 32 ${MMC1} -n ${BOOT_LABEL}
+
+	echo ""
+	echo "Formating ${RFS} Partition"
+	echo ""
+	sudo mkfs.${RFS} -U "$RFS_UUID" ${MMC2} -L ${RFS_LABEL}
+
+	if test "-$IMAGE_TYPE-" = "-android-"; then
+		echo ""
+		echo "Formating Data Partition"
+		echo ""
+		sudo mkfs.vfat -F 32 ${MMC3} -n ${DATA_LABEL}
+	fi
+}
+
+# Populate boot files to the bootfs partition
+populate_boot() {
+	echo ""
+	echo "Populating Boot Partition"
+	echo "Be patient, this may take a few minutes"
+	echo ""
+
+	mkdir -p ${TMPDIR}/disk || true
+	sudo mount ${MMC1} ${TMPDIR}/disk
+
+	sudo cp -f ${TMPDIR}/binary/MLO ${TMPDIR}/disk/
+	sudo cp -f ${TMPDIR}/binary/zImage ${TMPDIR}/disk/
+
+	# create INI file based on script arguments
+	create_ini mmc ${TMPDIR}/disk/
+	if [ $? != 0 ]; then
+		echo "Error: create_init function failed with error $?"
+		exit 1
+	fi
+
+	# cleanup
+	sudo umount ${TMPDIR}/disk || true
+	sudo rm -fr ${TMPDIR}/disk
+}
+
+# Populate the rootfs image to the rootfs partition
+populate_rootfs() {
+	echo ""
+	echo "Populating rootfs Partition"
+	echo "Be patient, this may take a few minutes"
+	echo ""
+
+	mkdir -p ${TMPDIR}/disk || true
+	mkdir -p ${TMPDIR}/binary || true
+
+	sudo mount ${MMC2} ${TMPDIR}/disk
+
+	# uncompress the rootfs
+	sudo tar -jxf ${IMAGE_FILE} -C ${TMPDIR}/disk/
+ 
+	# get bootloader from rootfs
+	sudo cp -pL ${TMPDIR}/disk/boot/MLO ${TMPDIR}/binary/
+	# get kernel image from rootfs
+	sudo cp -pL ${TMPDIR}/disk/boot/zImage ${TMPDIR}/binary/
+
+	# put the image into firmware directory, useful for flash current image
+	sudo mkdir -p ${TMPDIR}/disk/opt/firmware
+	sudo cp -pL ${IMAGE_FILE} ${TMPDIR}/disk/opt/firmware
+
+	# cleanup
+	sudo umount ${TMPDIR}/disk || true
+	sudo rm -fr ${TMPDIR}/disk
+}
+
+checkparm() {
+    if [ "$(echo $1|grep ^'\-')" ];then
+        echo "Error: Need an argument"
+        usage
+    fi
+}
+
+check_mmc() {
+	FDISK=$(sudo LC_ALL=C sfdisk -l | grep "[Disk] ${MMC}" | awk '{print $2}')
+
+	if test "-$FDISK-" = "-$MMC:-"; then
+		echo ""
+		echo "I see..."
+		echo "sudo sfdisk -l:"
+		sudo LC_ALL=C sfdisk -l | grep "[Disk] /dev/" --color=never
+		echo ""
+		echo "mount:"
+ 		mount | grep -v none | grep "/dev/" --color=never
+		echo ""
+		if [ "$ASSUME_YES" == "false" ]; then
+			read -p "Are you 100% sure, on selecting [${MMC}] (y/n)? "
+			[ "$REPLY" == "y" ] || exit
+		fi
+		echo ""
+	else
+		echo ""
+		echo "Are you sure? I Don't see [${MMC}], here is what I do see..."
+		echo ""
+		echo "sudo sfdisk -l:"
+		sudo LC_ALL=C sfdisk -l | grep "[Disk] /dev/" --color=never
+		if [ "$ASSUME_YES" == "false" ]; then
+			read -p "Are you 100% sure, on selecting [${MMC}] (y/n)? "
+			[ "$REPLY" == "y" ] || exit
+		fi
+		echo ""
+		echo "mount:"
+		mount | grep -v none | grep "/dev/" --color=never
+		echo ""
+		exit
+	fi
+}
+
+# Function to check if machine is valid
+check_machine() {
+	IN_VALID_MACHINE=1
+	if test "-$MACHINE-" = "-igep0020-"; then
+		unset IN_VALID_MACHINE
+	fi
+
+	if test "-$MACHINE-" = "-igep0030-"; then
+ 		unset IN_VALID_MACHINE
+	fi
+
+	if test "-$MACHINE-" = "-igep0032-"; then
+		unset IN_VALID_MACHINE
+	fi
+
+	if [ "$IN_VALID_MACHINE" ]; then
+		echo "Error: Invalid machine."
+		usage
+	fi
+}
+
+check_type() {
+	IN_VALID_IMAGE_TYPE=1
+	if test "-$IMAGE_TYPE-" = "-denzil-"; then
+		unset IN_VALID_IMAGE_TYPE
+	fi
+	if test "-$IMAGE_TYPE-" = "-android-"; then
+		unset IN_VALID_IMAGE_TYPE
+	fi
+	if [ "$IN_VALID_IMAGE_TYPE" ]; then
+		echo "Error: Invalid type."
+		usage
+	fi
+}
+
+# Function for remove temporary files
+cleanup_workdir() {
+	sudo rm -fr ${TMPDIR}
+}
+
+# Usage help
+usage() {
+    echo "usage: $(basename $0) --mmc <mmc> --image <filename> --machine <machine>"
+cat <<EOF
+
+required options:
+--mmc </dev/sdX>
+    unformated MMC Card
+
+--image <filename>
+    specify file used to create the bootable SD card.
+
+--machine <machine>
+    specify the machine. Options are igep0020, igep0030 or igep0032
+
+Additional/Optional options:
+-h --help
+    this help
+
+--type <image type>
+    specify the image type. Options are denzil, android.
+        denzil - <set as default>
+        android
+    This option adds some tweaks required by the image type
+ 
+--assume-yes
+    assume Yes on all queries <dangerous>
+
+EOF
+exit
+}
+
+version() {
+	echo "$(basename $0) ${__VERSION__}"
+cat << EOF
+
+Copyright (C) 2012 - ISEE 2007 SL
+License GPLv2: GNU GPL version 2 or later <http://gnu.org/licenses/gpl.html>.
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
+EOF
+exit
+}
+
+# -----------------------------------------------------------------------------
+# Main
+# -----------------------------------------------------------------------------
+
+# parse commandline options
+while [ ! -z "$1" ]; do
+	case $1 in
+		-h|--help)
+			usage
+			;;
+		-v|--version)
+			version
+			;;
+		--mmc)
+			checkparm $2
+			MMC="$2"
+			;;
+		--image)
+			checkparm $2
+			IMAGE_FILE="$2"
+			;;
+		--machine)
+			checkparm $2
+			MACHINE="$2"
+			check_machine
+			;;
+		--type)
+			checkparm $2
+			IMAGE_TYPE="$2"
+			check_type
+			;;
+		--assume-yes)
+			ASSUME_YES="true"
+			;;
+	esac
+	shift
+done
+
+# ensure required parameters exists
+if [ ! "${MMC}" -a ! "${IMAGE_FILE}" -a ! "${MACHINE}" ]; then
+	usage
+fi
+
+check_mmc
+get_mmcs_by_id
+cleanup_sd
+create_partitions
+echo -n "waiting for partitioning to settle ..."
+sync
+echo "done."
+get_mmcs_by_id
+
+if test -z "$MMC1" -o -z "$MMC2"; then
+	echo "MMC1: $MMC1 nor MMC2: $MMC2 must be empty"
+	exit 2
+fi
+
+prepare_partitions
+
+if [ -z "${TMPDIR}" ]; then
+    echo "Warning: The ${TMPDIR} directory exist, must be removed!"
+    sudo rm -fr ${TMPDIR}
+fi
+
+# kernel image and bootloader are extracted from boot directory in the rootfs
+# so populate_rootfs should be called before populate_boot
+populate_rootfs
+# when the rootfs is extracted the kernel image and the bootloader are copied
+# to the ${TPMDIR}/binary
+populate_boot
+
+# Remove temporary directories
+cleanup_workdir
+
+exit 0
