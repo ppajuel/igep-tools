@@ -1,0 +1,119 @@
+#!/bin/bash
+# e-tools-functions - This file contains functions to be used by most or all
+#                     e-tools shell scripts.
+#
+# Copyright 2012 - ISEE 2007 SL
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License version 3 as published
+# by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# AUTHORS
+# Enric Balletbo i Serra <eballetbo [at] iseebcn.com>
+#
+
+__REVISION__="0"
+
+# Required environment variables :
+#     MACHINE
+
+# Create the ini file for bootfs partition.
+#
+# Returns 0 on success a different value if  failed.
+# Required arguments
+#   rootfstype : specify the rootfstype. Options are mmc, jffs2.
+#   outputdir : specify destination directory for ini file, path must exist.
+create_ini() {
+	INIFILE="igep.ini"
+
+	IN_VALID_INI=1
+	if test "-$1-" = "-mmc-"; then
+ 		unset IN_VALID_INI
+	fi
+
+	if test "-$1-" = "-jffs2-"; then
+ 		unset IN_VALID_INI
+	fi
+
+	if [ "$IN_VALID_INI" ]; then
+		echo "Error: specify the rootfstype. Options are mmc, jffs2."
+ 		exit 1
+	fi
+
+	if [ ! -d $2 ]; then
+		echo "Error: specify destination directory for ini file, path must exist."
+		return 1
+	fi
+
+	ROOTFSTYPE="$1"
+	OUTPUTDIR="$2"
+
+	cat << EOF | sudo tee ${OUTPUTDIR}/${INIFILE}
+[kernel]
+kaddress=0x80008000
+; Board Serial ID
+serial.low=00000000
+serial.high=00000000
+; Board Revision
+revision=0000
+; Kernel Image Name
+kImageName=zImage
+; Define Machine ID (2344 = IGEP0020, 2717 = IGEP0030)
+;    2344 = IGEP0020
+;    2717 = IGEP0030
+;    3203 = IGEP0032
+MachineID=2344
+; Mode = uboot or kernel
+Mode=kernel
+
+[kparams]
+; Setup the Kernel console params
+console=ttyO2,115200n8
+console=tty0
+; Setup the Board Memory Configuration
+mem=430M
+; Configure Frame Buffer Configuration
+omapfb.mode=dvi:1024x768MR-16@60
+; Configure Video Ram assigned
+vram=40M
+; Configure Video RAM assigned to every frame buffer
+omapfb.vram=0:12M,1:16M,2:12M
+EOF
+
+	if [ "$ROOTFSTYPE" == "mmc" ]; then
+		cat << EOF | sudo tee -a ${OUTPUTDIR}/${INIFILE}
+;  --- Configure MMC boot ---
+root=/dev/mmcblk0p2 rw rootwait
+EOF
+	fi
+
+ 	if [ "$ROOTFSTYPE" == "jffs2" ]; then
+		cat << EOF | sudo tee -a ${OUTPUTDIR}/${INIFILE}
+;  --- Configure JFFS2 FS boot ---
+root=/dev/mtdblock2
+rootfstype=jffs2
+EOF
+	fi
+
+	echo "; Machine configuration" | sudo tee -a ${OUTPUTDIR}/${INIFILE}
+	if [ "$MACHINE" == "igep0020" ]; then
+    	echo "buddy=igep0022" | sudo tee -a ${OUTPUTDIR}/${INIFILE}
+	fi
+	if [ "$MACHINE" == "igep0030" ]; then
+		sudo sed -i 's/MachineID=2344/MachineID=2717/' ${OUTPUTDIR}/${INIFILE}
+		echo "buddy=base0010 buddy.revision=B" | sudo tee -a ${OUTPUTDIR}/${INIFILE}
+	fi
+	if [ "$MACHINE" == "igep0032" ]; then
+		sudo sed -i 's/MachineID=2344/MachineID=3203/' ${OUTPUTDIR}/${INIFILE}
+		echo "buddy=base0010 buddy.revision=B" | sudo tee -a ${OUTPUTDIR}/${INIFILE}
+	fi
+	return 0
+}
