@@ -1,0 +1,133 @@
+#!/bin/bash
+# create-android-image - Automatically create an Android image tarball
+#
+# Copyright 2012 - ISEE 2007 SL
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License version 3 as published
+# by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# DESCRIPTION
+# 'create-android-image' is a tool that helps users create an Android image tarball
+# from Android build.
+#
+# AUTHORS
+# Enric Balletbo i Serra <eballetbo [at] iseebcn.com>
+#
+# TODO
+#   - download/add the bootloader in package
+
+set -e
+
+__VERSION__="0.1"
+
+unset ANDROID_SOURCE_PATH PRODUCT
+
+VERSION="unknow"
+
+DIR=$(pwd)
+TMPDIR="$PWD/tmp-workdir"
+
+# Usage help
+usage() {
+    echo "usage: $(basename $0) --source <android source path> --product <product>"
+cat <<EOF
+
+required options:
+--source <android source path>
+    specify the Android source path
+
+--product <product machine>
+    specify the android product, e.g. igep00x0
+
+Additional/Optional options:
+-h --help
+    this help
+EOF
+exit
+}
+
+checkparm() {
+    if [ "$(echo $1|grep ^'\-')" ];then
+        echo "E: Need an argument"
+        usage
+    fi
+}
+
+checkpath() {
+	TMPVERSION="${ANDROID_SOURCE_PATH}/build/core/version_defaults.mk"
+	if [ ! -f $TMPVERSION ]; then
+		echo "Error: The version file ($TMPVERSION) does not exist!"
+		exit 1
+	fi
+	VERSION=$(grep 'PLATFORM_VERSION :=' $TMPVERSION | awk {'print $3'}) 
+}
+
+checkproduct() {
+	TMPPRODUCT="${ANDROID_SOURCE_PATH}/device/ti/${PRODUCT}"
+	if [ -d TMPPRODUCT ]; then
+		echo "Error: The product directory ($TMPPRODUCT) does not exist!"
+		exit 1
+	fi
+}
+
+# -----------------------------------------------------------------------------
+# Main
+# -----------------------------------------------------------------------------
+# parse commandline options
+while [ ! -z "$1" ]; do
+	case $1 in
+		-h|--help)
+			usage
+			;;
+		--source)
+			checkparm $2
+			ANDROID_SOURCE_PATH="$2"
+			checkpath
+			;;
+		--product)
+			checkparm $2
+			PRODUCT="$2"
+			;;
+	esac
+	shift
+done
+
+if [ ! "${ANDROID_SOURCE_PATH}" -o ! "${PRODUCT}" ]; then
+	usage
+fi
+
+checkproduct
+
+echo "Creating Android $VERSION image"
+
+if [ -z "${TMPDIR}" ]; then
+    echo "Warning: The ${TMPDIR} directory exist, must be removed!"
+    rm -fr ${TMPDIR}
+fi
+
+mkdir -p ${TMPDIR}
+
+cd ${ANDROID_SOURCE_PATH}/out/target/product/${PRODUCT}
+
+echo "  copying android files to tmpdir..."   
+cp -r root/* system ${TMPDIR}
+mkdir ${TMPDIR}/boot
+cp -f ${ANDROID_SOURCE_PATH}/kernel/arch/arm/boot/zImage ${TMPDIR}/boot
+echo "  making rootfs tarball, this may take awhile..."
+fakeroot ../../../../build/tools/mktarball.sh ../../../host/linux-x86/bin/fs_get_stats ${TMPDIR} . rootfs ${DIR}/android-image-${VERSION}.tar.bz2
+
+# cleanup
+rm -fr ${TMPDIR}
+
+echo "done."
+
+exit 0
