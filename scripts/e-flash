@@ -1,0 +1,247 @@
+#!/bin/bash
+# e-flash - Flash the firmware to the OneNAND/NAND
+#
+# Copyright 2012 - ISEE 2007 SL
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License version 3 as published
+# by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# DESCRIPTION
+# 'e-flash' is a tool that helps users flash images to the board. Invoking
+# it without any arguments will display help screens for 'e-flash' command.
+# Please use that interface for detailed help.
+#
+# AUTHORS
+# Enric Balletbo i Serra <eballetbo [at] iseebcn.com>
+#
+# TODO
+#   - Do not run the script when the rootfs is in flash.
+#   - Add suppport for IGEP0032 machine.
+
+set -e
+
+# include e-tools-functions
+if [ -f e-tools-functions ]; then
+	. e-tools-functions
+elif [ -f /lib/e-tools/e-tools-functions ]; then
+    . /lib/e-tools/e-tools-functions
+else
+	echo "Error: e-tools-functions not found."
+	exit 1
+fi
+
+# The revision number is imported from e-tools-functions file
+__VERSION__="0.1.${__REVISION__}"
+
+unset IMAGE_FILE MACHINE
+
+# Environment
+DIR=$PWD
+TMPDIR="$PWD/tmp-workdir"
+
+MACHINE=$(cat /proc/cpuinfo | grep Hardware | awk '{print $3;}')
+
+SKIP_NANDTEST="false"
+
+success() {
+	echo "Successfully written firmware to flash"
+	if [ $MACHINE == "IGEP0020" ]; then
+		echo 0 > /sys/class/leds/d240\:red/brightness
+		echo heartbeat > /sys/class/leds/d240\:green/trigger
+	fi
+	if [ $MACHINE == "IGEP0030" ]; then
+		echo 0 > /sys/class/leds/d210\:red/brightness
+		echo heartbeat > /sys/class/leds/d210\:green/trigger
+	fi
+}
+
+failed() {
+	echo "Error: Flash script failed with error - $1"
+	if [ $MACHINE == "IGEP0020" ]; then
+		echo 0 > /sys/class/leds/d240\:green/brightness
+	fi
+	if [ $MACHINE == "IGEP0030" ]; then
+		echo 0 > /sys/class/leds/d210\:green/brightness
+		echo 1 > /sys/class/leds/d210\:red/brightness
+	fi
+	exit 1
+}
+
+checkparm() {
+    if [ "$(echo $1|grep ^'\-')" ];then
+        echo "Error: Need an argument"
+        usage
+    fi
+}
+
+ensure_command() {
+	# ensure_command foo
+	which "$1" 2>/dev/null 1>/dev/null || ( failed "Install required command $1, aborting." )
+}
+
+ensure_file() {
+	# ensure file exists
+	[ -f $1 ] || ( failed "File $1 not exists, aborting." )
+}
+
+prepare() {
+	if [ $MACHINE == "IGEP0020" ]; then
+		echo 1 > /sys/class/leds/d240\:green/brightness
+		echo 1 > /sys/class/leds/d240\:red/brightness
+	fi
+	if [ $MACHINE == "IGEP0030" ]; then
+		echo 1 > /sys/class/leds/d210\:green/brightness
+		echo 1 > /sys/class/leds/d210\:red/brightness
+	fi
+}
+
+# cleanup previous environmet if exist
+cleanup_workdir() {
+	for mtd in mtdblock1 mtdblock2 ; do
+		umount  ${TMPDIR}/${mtd} || true
+	done
+
+	rm -fr ${TMPDIR}
+}
+
+# mark bad blocks
+mark_bad_blocks() {
+	for i in 0 1 2; do
+		nandtest -m /dev/mtd${i}
+	done
+}
+
+# write image to the flash device
+flash_image() {
+	# erase partitions
+	for i in 0 1 2; do
+		flash_erase /dev/mtd${i} 0 0 || failed "erasing partitions"
+	done
+
+	for mtd in mtdblock1 mtdblock2 ; do
+		mkdir -p ${TMPDIR}/${mtd}
+		mount -t jffs2 -o sync /dev/${mtd} ${TMPDIR}/${mtd}
+		if [ $? != 0 ]; then
+			failed "mounting /dev/${mtd} to ${TMPDIR}/${mtd}"
+		fi
+	done
+
+	echo ""
+	echo "Writing image to the flash  "
+	echo "Be patient, this may take a few minutes"
+	echo ""
+	# first uncompress the image file to the second partition
+	tar -jxf ${IMAGE_FILE} -C ${TMPDIR}/mtdblock2
+	# then, copy kernel image from second partition to the first partition
+	cp ${TMPDIR}/mtdblock2/boot/zImage ${TMPDIR}/mtdblock1
+	# now, create the INI file
+	create_ini jffs2 ${TMPDIR}/mtdblock1
+	if [ $? != 0 ]; then
+		failed "create_init function failed with error $?"
+	fi
+	# finally write the bootloader to mtd0
+	writeloader -i ${TMPDIR}/mtdblock2/boot/MLO -o /dev/mtd0
+	if [ $? != 0 ]; then
+		failed "writting the bootloader with error $?"
+	fi
+
+	sync
+}
+
+# Usage help
+usage() {
+    echo "usage: $(basename $0) --image <filename>"
+cat <<EOF
+
+required options:
+
+--image <filename>
+    specify file used to write to the flash device.
+
+Additional/Optional options:
+-h --help
+    this help
+ 
+--skip-nandtest
+    skip mark blocks bad if they appear so
+
+EOF
+exit
+}
+
+version() {
+	echo "$(basename $0) ${__VERSION__}"
+cat << EOF
+
+Copyright (C) 2012 - ISEE 2007 SL
+License GPLv2: GNU GPL version 2 or later <http://gnu.org/licenses/gpl.html>.
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
+EOF
+exit
+}
+
+# -----------------------------------------------------------------------------
+# Main
+# -----------------------------------------------------------------------------
+# These packages are required
+ensure_command flash_erase
+ensure_command nandtest
+ensure_command mount
+ensure_command umount
+ensure_command tar
+ensure_command writeloader
+
+# parse commandline options
+while [ ! -z "$1" ]; do
+	case $1 in
+		-h|--help)
+			usage
+			;;
+		-v|--version)
+			version
+			;;
+		--image)
+			checkparm $2
+			IMAGE_FILE="$2"
+			;;
+		--skip-nandtest)
+			SKIP_NANDTEST="true"
+			;;
+	esac
+	shift
+done
+
+# ensure required parameters exists
+if [ ! "${IMAGE_FILE}" ]; then
+	usage
+fi
+
+# Start flashing new firmware
+prepare
+cleanup_workdir
+
+if [ "$SKIP_NANDTEST" == "false" ]; then
+	echo ""
+	echo "Mark blocks bad if they appear so "
+	echo ""
+	mark_bad_blocks
+fi
+
+flash_image
+
+# Remove temporary directories
+cleanup_workdir
+# That's all folks ...
+success
+
+exit 0
