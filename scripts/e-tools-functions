@@ -31,6 +31,9 @@ __REVISION__="0"
 # Required arguments
 #   rootfstype : specify the rootfstype. Options are mmc, jffs2.
 #   outputdir : specify destination directory for ini file, path must exist.
+
+MAC0=$(echo -n '0x02';dd bs=1 count=5 if=/dev/urandom 2>/dev/null | hexdump -v -e '/1 ",0x%02x"')
+
 create_ini() {
 	INIFILE="igep.ini"
 
@@ -80,6 +83,8 @@ console=ttyO2,115200n8
 console=tty0
 ; Setup the Board Memory Configuration
 mem=430M
+; Configure the Board Ethernet Mac Address
+smsc911x.mac=${MAC0}
 ; Configure Frame Buffer Configuration
 omapfb.mode=dvi:1024x768MR-16@60
 ; Configure Video Ram assigned
