@@ -1,5 +1,5 @@
 #!/bin/bash
-# e-flash - Flash the firmware to the OneNAND/NAND
+# igep-flash - Flash the firmware to the OneNAND/NAND
 #
 # Copyright 2012 - ISEE 2007 SL
 #
@@ -16,8 +16,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # DESCRIPTION
-# 'e-flash' is a tool that helps users flash images to the board. Invoking
-# it without any arguments will display help screens for 'e-flash' command.
+# 'igep-flash' is a tool that helps users flash images to the board. Invoking
+# it without any arguments will display help screens for 'igep-flash' command.
 # Please use that interface for detailed help.
 #
 # AUTHORS
@@ -29,17 +29,17 @@
 
 set -e
 
-# include e-tools-functions
-if [ -f e-tools-functions ]; then
-	. e-tools-functions
-elif [ -f /lib/e-tools/e-tools-functions ]; then
-    . /lib/e-tools/e-tools-functions
+# include e-functions
+if [ -f e-functions ]; then
+	. e-functions
+elif [ -f /lib/igep-tools/e-functions ]; then
+    . /lib/igep-tools/e-functions
 else
-	echo "Error: e-tools-functions not found."
+	echo "Error: e-functions not found."
 	exit 1
 fi
 
-# The revision number is imported from e-tools-functions file
+# The revision number is imported from e-functions file
 __VERSION__="0.1.${__REVISION__}"
 
 unset IMAGE_FILE MACHINE
@@ -170,7 +170,7 @@ required options:
 Additional/Optional options:
 -h --help
     this help
- 
+
 --skip-nandtest
     skip mark blocks bad if they appear so
 

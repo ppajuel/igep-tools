@@ -1,6 +1,6 @@
 #!/bin/bash
-# e-tools-functions - This file contains functions to be used by most or all
-#                     e-tools shell scripts.
+# igep-tools-functions - This file contains functions to be used by most or all
+#                        igep-tools shell scripts.
 #
 # Copyright 2012 - ISEE 2007 SL
 #

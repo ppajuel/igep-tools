@@ -1,5 +1,5 @@
 #!/bin/bash
-# e-media-create - Automatically create a bootable SD cards from images
+# igep-media-create - Automatically create a bootable SD cards from images
 #
 # Copyright (C) 2012 - ISEE 2007 SL
 #
@@ -20,9 +20,9 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # DESCRIPTION
-# 'e-media-create' is a tool that helps users create a new bootable SD cards
+# 'igep-media-create' is a tool that helps users create a new bootable SD cards
 # images.  Invoking it without any arguments will display help screens for
-# the 'e-media-create' command. Please use that interface for detailed help.
+# the 'igep-media-create' command. Please use that interface for detailed help.
 #
 # AUTHORS
 # Enric Balletbo i Serra <eballetbo [at] iseebcn.com>
@@ -33,17 +33,17 @@
 
 set -e
 
-# include e-tools-functions
-if [ -f e-tools-functions ]; then
-	. e-tools-functions
-elif [ -f /lib/e-tools/e-tools-functions ]; then
-    . /lib/e-tools/e-tools-functions
+# include e-functions
+if [ -f e-functions ]; then
+	. e-functions
+elif [ -f /lib/igep-tools/e-functions ]; then
+    . /lib/igep-tools/e-functions
 else
-	echo "Error: e-tools-functions not found."
+	echo "Error: igep-tools-functions not found."
 	exit 1
 fi
 
-# The revision number is imported from e-tools-functions file
+# The revision number is imported from e-functions file
 __VERSION__="0.1.${__REVISION__}"
 
 unset MMC MMC1 MMC2 MMC3 IMAGE_FILE MACHINE
