@@ -230,6 +230,9 @@ fi
 prepare
 cleanup_workdir
 
+# Ensure file image exists
+ensure_file ${IMAGE_FILE}
+
 if [ "$SKIP_NANDTEST" == "false" ]; then
 	echo ""
 	echo "Mark blocks bad if they appear so "
