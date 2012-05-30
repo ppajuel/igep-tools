@@ -85,7 +85,31 @@ CYLINDER_ARG=""
 DIR=$PWD
 TMPDIR="$PWD/tmp-workdir"
 
+wait_for_partitions_to_appear() {
+	for device in /dev/disk/by-id/*; do
+		if [ `realpath $device` = $MMC ]; then
+			if echo "$device" | grep -q -- "-part[0-9]*$"; then
+				echo "device $MMC must not be a partition part ($device)" 1>&2
+				exit 1
+			fi
+
+			if [ ! -e ${device}-part1 ]; then
+				echo -n "Waiting for partitions to appear."
+
+				while [ ! -e ${device}-part1 ]
+				do
+					sleep 1
+					echo -n "."
+				done
+				echo " done"
+			fi
+		fi
+	done
+}
+
 get_mmcs_by_id() {
+	unset MMC1 MMC2 MMC3
+
 	for device in /dev/disk/by-id/*; do
 		if [ `realpath $device` = $MMC ]; then
 			if echo "$device" | grep -q -- "-part[0-9]*$"; then
@@ -413,6 +437,7 @@ create_partitions
 echo -n "waiting for partitioning to settle ..."
 sync
 echo "done."
+wait_for_partitions_to_appear
 get_mmcs_by_id
 
 if test -z "$MMC1" -o -z "$MMC2"; then
