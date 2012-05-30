@@ -1,0 +1,41 @@
+#!/bin/sh
+### BEGIN INIT INFO
+# Provides:          igep-tools
+# Required-Start:    mountnfs.sh
+# Should-Start:
+# Required-Stop:
+# Should-Stop:
+# Default-Start:     2 3 4 5
+# Default-Stop:
+# Short-Description: igep-tools autoflash script for IGEP-technology boards
+# Description:       This script should be placed in /etc/init.d
+### END INIT INFO
+
+# PATH should only include /usr/* if it runs after the mountnfs.sh script
+PATH=/sbin:/usr/sbin:/bin:/usr/bin
+
+NAME="igep-tools"
+IMAGE_FILE="/opt/firmware/demo-image-sato.tar.bz2"
+EFLASH="/usr/bin/igep-flash --image ${IMAGE_FILE}"
+
+# Read configuration variable file if it is present
+#[ -r /etc/default/${NAME} ] && . /etc/default/${NAME}
+
+#
+# Function that starts the script
+#
+do_start() {
+	echo "Starting ${NAME} ..."
+	read CMDLINE < /proc/cmdline
+	for x in ${CMDLINE}; do
+		case ${x} in
+			igep-tools.auto=flash)
+				echo "Running ${NAME} AUTO flash ..."
+				exec ${EFLASH} >/dev/null 2>&1 || status=$?
+				exit ${status};
+				;;
+		esac
+	done
+}
+
+do_start
