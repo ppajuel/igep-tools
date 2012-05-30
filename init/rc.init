@@ -15,7 +15,7 @@
 PATH=/sbin:/usr/sbin:/bin:/usr/bin
 
 NAME="igep-tools"
-IMAGE_FILE="/opt/firmware/demo-image-sato.tar.bz2"
+IMAGE_FILE="/opt/firmware/demo-image-sato-igep00x0.tar.bz2"
 EFLASH="/usr/bin/igep-flash --image ${IMAGE_FILE}"
 
 # Read configuration variable file if it is present
