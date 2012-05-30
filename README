@@ -1,0 +1,32 @@
+This README file contains information on using the igep-tools
+package. Please see the corresponding sections below for details.
+
+Table of Contents
+=================
+
+   I. Overwiew
+  II. Installation (TODO)
+
+
+I. Overview
+=========================================
+
+This is a suite of shell scripts (and a set of helper programs that you may use
+if you wish) Invoking the shell script without any arguments will display help
+screens for each program. Please use that interface for detailed help.
+
+  init/
+    rc.init - init.d startup script
+  scripts/
+    create-android-image - Tool that helps users create an Android image tarball
+                           from Android build.
+    igep-flash           - Tool to flash the firmware to the OneNAND/NAND
+    igep-media-create    - Tool that helps users to automatically create a bootable
+                           microSD from a image.
+
+
+II. Installation
+=========================================
+
+Read the INSTALL file.
+
