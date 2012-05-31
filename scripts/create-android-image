@@ -122,6 +122,7 @@ echo "  copying android files to tmpdir..."
 cp -r root/* system ${TMPDIR}
 mkdir ${TMPDIR}/boot
 cp -f ${ANDROID_SOURCE_PATH}/kernel/arch/arm/boot/zImage ${TMPDIR}/boot
+cp -f ${ANDROID_SOURCE_PATH}/igep-x-loader/x-load.bin.ift ${TMPDIR}/boot/MLO
 echo "  making rootfs tarball, this may take awhile..."
 fakeroot ../../../../build/tools/mktarball.sh ../../../host/linux-x86/bin/fs_get_stats ${TMPDIR} . rootfs ${DIR}/android-image-${VERSION}.tar.bz2
 
