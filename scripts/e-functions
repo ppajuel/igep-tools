@@ -24,7 +24,8 @@ __REVISION__="0"
 
 # Required environment variables :
 #     MACHINE
-
+#     IMAGE_TYPE
+#
 # Create the ini file for bootfs partition.
 #
 # Returns 0 on success a different value if  failed.
@@ -92,6 +93,15 @@ vram=40M
 ; Configure Video RAM assigned to every frame buffer
 omapfb.vram=0:12M,1:16M,2:12M
 EOF
+
+	if [ "$IMAGE_TYPE" = "android"; then
+		cat << EOF | sudo tee -a ${OUTPUTDIR}/${INIFILE}
+;  --- Android specific parameters ---
+androidboot.console=ttyO2
+;init
+init=/init
+EOF
+	fi
 
 	if [ "$ROOTFSTYPE" == "mmc" ]; then
 		cat << EOF | sudo tee -a ${OUTPUTDIR}/${INIFILE}

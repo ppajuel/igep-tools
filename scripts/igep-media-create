@@ -445,6 +445,13 @@ if test -z "$MMC1" -o -z "$MMC2"; then
 	exit 2
 fi
 
+if test "-$IMAGE_TYPE-" = "-android-"; then
+	if test -z "$MMC3"; then
+		echo "MMC3: $MMC3 must be empty"
+		exit 2
+	fi
+fi
+
 prepare_partitions
 
 if [ -z "${TMPDIR}" ]; then
