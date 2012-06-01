@@ -228,6 +228,7 @@ populate_boot() {
 	fi
 
 	# cleanup
+	sync
 	sudo umount ${TMPDIR}/disk || true
 	sudo rm -fr ${TMPDIR}/disk
 }
@@ -257,6 +258,7 @@ populate_rootfs() {
 	sudo cp -pL ${IMAGE_FILE} ${TMPDIR}/disk/opt/firmware
 
 	# cleanup
+	sync
 	sudo umount ${TMPDIR}/disk || true
 	sudo rm -fr ${TMPDIR}/disk
 }
