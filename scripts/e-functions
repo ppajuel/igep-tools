@@ -94,7 +94,7 @@ vram=40M
 omapfb.vram=0:12M,1:16M,2:12M
 EOF
 
-	if [ "$IMAGE_TYPE" = "android"; then
+	if [ "$IMAGE_TYPE" = "android" ]; then
 		cat << EOF | sudo tee -a ${OUTPUTDIR}/${INIFILE}
 ;  --- Android specific parameters ---
 androidboot.console=ttyO2
