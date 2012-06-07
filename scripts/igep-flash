@@ -48,7 +48,7 @@ unset IMAGE_FILE MACHINE
 DIR=$PWD
 TMPDIR="$PWD/tmp-workdir"
 
-MACHINE=$(cat /proc/cpuinfo | grep Hardware | awk '{print $3;}')
+MACHINE=$(cat /proc/cpuinfo | grep Hardware | awk '{print tolower($3);}')
 
 SKIP_NANDTEST="false"
 
