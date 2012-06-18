@@ -54,11 +54,11 @@ SKIP_NANDTEST="false"
 
 success() {
 	echo "Successfully written firmware to flash"
-	if [ $MACHINE == "IGEP0020" ]; then
+	if [ $MACHINE == "igep0020" ]; then
 		echo 0 > /sys/class/leds/d240\:red/brightness
 		echo heartbeat > /sys/class/leds/d240\:green/trigger
 	fi
-	if [ $MACHINE == "IGEP0030" ]; then
+	if [ $MACHINE == "igep0030" ]; then
 		echo 0 > /sys/class/leds/d210\:red/brightness
 		echo heartbeat > /sys/class/leds/d210\:green/trigger
 	fi
@@ -66,10 +66,10 @@ success() {
 
 failed() {
 	echo "Error: Flash script failed with error - $1"
-	if [ $MACHINE == "IGEP0020" ]; then
+	if [ $MACHINE == "igep0020" ]; then
 		echo 0 > /sys/class/leds/d240\:green/brightness
 	fi
-	if [ $MACHINE == "IGEP0030" ]; then
+	if [ $MACHINE == "igep0030" ]; then
 		echo 0 > /sys/class/leds/d210\:green/brightness
 		echo 1 > /sys/class/leds/d210\:red/brightness
 	fi
@@ -94,11 +94,11 @@ ensure_file() {
 }
 
 prepare() {
-	if [ $MACHINE == "IGEP0020" ]; then
+	if [ $MACHINE == "igep0020" ]; then
 		echo 1 > /sys/class/leds/d240\:green/brightness
 		echo 1 > /sys/class/leds/d240\:red/brightness
 	fi
-	if [ $MACHINE == "IGEP0030" ]; then
+	if [ $MACHINE == "igep0030" ]; then
 		echo 1 > /sys/class/leds/d210\:green/brightness
 		echo 1 > /sys/class/leds/d210\:red/brightness
 	fi
