@@ -256,6 +256,14 @@ populate_rootfs() {
 	# put the image into firmware directory, useful for flash current image
 	sudo mkdir -p ${TMPDIR}/disk/opt/firmware
 	sudo cp -pL ${IMAGE_FILE} ${TMPDIR}/disk/opt/firmware
+	if [ -f ${DIR}/README ]; then
+		sudo cp ${DIR}/README ${TMPDIR}/disk/opt/firmware
+	else
+		echo ""
+		echo "Note: README file not found, seems you're running this script outside firmware directory."
+		echo "      The readme file is not being copied to the /opt/firmware."
+		echo ""
+	fi
 
 	# cleanup
 	sync
