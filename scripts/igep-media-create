@@ -436,7 +436,7 @@ while [ ! -z "$1" ]; do
 done
 
 # ensure required parameters exists
-if [ ! "${MMC}" -a ! "${IMAGE_FILE}" -a ! "${MACHINE}" ]; then
+if [ ! "${MMC}" -o ! "${IMAGE_FILE}" -o ! "${MACHINE}" ]; then
 	usage
 fi
 
