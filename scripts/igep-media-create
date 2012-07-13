@@ -44,7 +44,7 @@ else
 fi
 
 # The revision number is imported from e-functions file
-__VERSION__="0.1.${__REVISION__}"
+__VERSION__="1.${__REVISION__}"
 
 unset MMC MMC1 MMC2 MMC3 IMAGE_FILE MACHINE
 
