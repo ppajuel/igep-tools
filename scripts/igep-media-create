@@ -69,7 +69,7 @@ ensure_command realpath realpath
 # Defaults
 RFS=ext3
 ASSUME_YES="false"
-IMAGE_TYPE="denzil"
+IMAGE_TYPE="yocto"
 # Partition labels
 BOOT_LABEL=boot
 RFS_LABEL=rootfs
@@ -151,7 +151,7 @@ cleanup_sd() {
 
 create_partitions() {
 	case $IMAGE_TYPE in
-		denzil)
+		yocto)
 		# Create a VFAT partition of 9 cylinders which is about 64M
 		# and a linux partition of the rest
 		sudo sfdisk -D -H $HEADS -S $SECTORS $CYLINDER_ARG $MMC << THEEND
@@ -345,7 +345,7 @@ check_machine() {
 
 check_type() {
 	IN_VALID_IMAGE_TYPE=1
-	if test "-$IMAGE_TYPE-" = "-denzil-"; then
+	if test "-$IMAGE_TYPE-" = "-yocto-"; then
 		unset IN_VALID_IMAGE_TYPE
 	fi
 	if test "-$IMAGE_TYPE-" = "-android-"; then
@@ -382,8 +382,8 @@ Additional/Optional options:
     this help
 
 --type <image type>
-    specify the image type. Options are denzil, android.
-        denzil - <set as default>
+    specify the image type. Options are yocto, android.
+        yocto - <set as default>
         android
     This option adds some tweaks required by the image type
  
