@@ -133,5 +133,11 @@ EOF
 		echo "omapdss.def_disp=lcd-70" | sudo tee -a ${OUTPUTDIR}/${INIFILE}
 	fi
 
+	# Replace default buddy if is required
+	if [ "$BUDDY" ]; then
+		sudo sed -i 's/buddy=.*//' ${OUTPUTDIR}/${INIFILE}
+		echo "buddy=${BUDDY}" | sudo tee -a ${OUTPUTDIR}/${INIFILE}
+	fi
+
 	return 0
 }

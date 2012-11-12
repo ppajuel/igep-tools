@@ -46,7 +46,7 @@ fi
 # The revision number is imported from e-functions file
 __VERSION__="1.${__REVISION__}"
 
-unset MMC MMC1 MMC2 MMC3 IMAGE_FILE MACHINE
+unset MMC MMC1 MMC2 MMC3 IMAGE_FILE MACHINE BUDDY
 
 ensure_command() {
 	# ensure_command foo foo-package
@@ -381,6 +381,14 @@ Additional/Optional options:
 -h --help
     this help
 
+--buddy <buddy>
+	specify the buddy. E.g.
+		igep0022 - IGEPv2 expasion board.
+		base0010 - IGEP PARIS or IGEP BERLIN.
+		ilms0015 - IGEP NEW YORK.
+		camr0010 - IGEP CAM BIRD.
+	This option adds some tweaks required by the image type
+
 --type <image type>
     specify the image type. Options are yocto, android.
         yocto - <set as default>
@@ -431,6 +439,10 @@ while [ ! -z "$1" ]; do
 			checkparm $2
 			MACHINE="$2"
 			check_machine
+			;;
+		--buddy)
+			checkparm $2
+			BUDDY="$2"
 			;;
 		--type)
 			checkparm $2
