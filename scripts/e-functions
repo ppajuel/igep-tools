@@ -135,8 +135,12 @@ EOF
 
 	# Replace default buddy if is required
 	if [ "$BUDDY" ]; then
+		# Remove buddy option
 		sudo sed -i 's/buddy=.*//' ${OUTPUTDIR}/${INIFILE}
-		echo "buddy=${BUDDY}" | sudo tee -a ${OUTPUTDIR}/${INIFILE}
+		# Set only if BUDDY is not none
+		if [ "$BUDDY" != "none" ]; then
+			echo "buddy=${BUDDY}" | sudo tee -a ${OUTPUTDIR}/${INIFILE}
+		fi
 	fi
 
 	return 0

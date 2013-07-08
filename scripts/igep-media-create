@@ -383,6 +383,7 @@ Additional/Optional options:
 
 --buddy <buddy>
 	specify the buddy. E.g.
+		none     - Without buddy.
 		igep0022 - IGEPv2 expasion board.
 		base0010 - IGEP PARIS or IGEP BERLIN.
 		ilms0015 - IGEP NEW YORK.
