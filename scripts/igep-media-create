@@ -70,6 +70,7 @@ ensure_command realpath realpath
 RFS=ext3
 ASSUME_YES="false"
 IMAGE_TYPE="yocto"
+BOOTLOADER_TYPE=""
 # Partition labels
 BOOT_LABEL=boot
 RFS_LABEL=rootfs
@@ -218,10 +219,15 @@ populate_boot() {
 	sudo mount ${MMC1} ${TMPDIR}/disk
 
 	sudo cp -f ${TMPDIR}/binary/MLO ${TMPDIR}/disk/
-	sudo cp -f ${TMPDIR}/binary/zImage ${TMPDIR}/disk/
 
-	# create INI file based on script arguments
-	create_ini mmc ${TMPDIR}/disk/
+	if [ "$BOOTLOADER_TYPE" == "uboot" ]; then
+		sudo cp -f ${TMPDIR}/binary/u-boot.img ${TMPDIR}/disk/
+	else
+		sudo cp -f ${TMPDIR}/binary/zImage ${TMPDIR}/disk/
+		# create INI file based on script arguments
+		create_ini mmc ${TMPDIR}/disk/
+	fi
+
 	if [ $? != 0 ]; then
 		echo "Error: create_init function failed with error $?"
 		exit 1
@@ -252,6 +258,9 @@ populate_rootfs() {
 	sudo cp -pL ${TMPDIR}/disk/boot/MLO ${TMPDIR}/binary/
 	# get kernel image from rootfs
 	sudo cp -pL ${TMPDIR}/disk/boot/zImage ${TMPDIR}/binary/
+	if [ "$BOOTLOADER_TYPE" == "uboot" ]; then
+		cp -pL ${TMPDIR}/disk/boot/u-boot.img ${TMPDIR}/binary/
+	fi
 
 	# put the image into firmware directory, useful for flash current image
 	sudo mkdir -p ${TMPDIR}/disk/opt/firmware
@@ -361,6 +370,26 @@ check_type() {
 	fi
 }
 
+check_bootloader() {
+	IN_VALID_BOOTLOADER=1
+	if test "-$BOOTLOADER_TYPE-" = "-uboot-"; then
+		unset IN_VALID_BOOTLOADER
+	fi
+	if test "-$BOOTLOADER_TYPE-" = "-igep-"; then
+		unset IN_VALID_BOOTLOADER
+	fi
+	# Empty
+	if test "-$BOOTLOADER_TYPE-" = "--"; then
+		unset IN_VALID_BOOTLOADER
+	fi
+	if [ "$IN_VALID_IMAGE_TYPE" ]; then
+		echo "Error: Invalid bootloader type. Options are:"
+		echo "\t- uboot"
+		echo "\t- igep"
+		usage
+	fi
+}
+
 # Function for remove temporary files
 cleanup_workdir() {
 	sudo rm -fr ${TMPDIR}
@@ -384,6 +413,9 @@ required options:
 Additional/Optional options:
 -h --help
     this help
+
+--bootloader <bootloader type>
+    specify the bootloader type. Options are uboot, igep.
 
 --buddy <buddy>
 	specify the buddy. E.g.
@@ -445,6 +477,11 @@ while [ ! -z "$1" ]; do
 			MACHINE="$2"
 			check_machine
 			;;
+		--bootloader)
+			checkparm $2
+			BOOTLOADER_TYPE="$2"
+			check_bootloader
+			;;
 		--buddy)
 			checkparm $2
 			BUDDY="$2"
@@ -486,6 +523,18 @@ if test "-$IMAGE_TYPE-" = "-android-"; then
 		echo "MMC3: $MMC3 must be empty"
 		exit 2
 	fi
+fi
+
+# If the bootloader type is not specified set the default
+if test "-$BOOTLOADER_TYPE-" = "--"; then
+	case "$MACHINE" in
+		"igep0020"| "igep0030" | "igep0032")
+			BOOTLOADER_TYPE="igep"
+			;;
+		*)
+			BOOTLOADER_TYPE="uboot"
+			;;
+	esac
 fi
 
 prepare_partitions
