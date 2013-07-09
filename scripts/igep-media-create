@@ -337,6 +337,10 @@ check_machine() {
 		unset IN_VALID_MACHINE
 	fi
 
+	if test "-$MACHINE-" = "-igep0033-"; then
+		unset IN_VALID_MACHINE
+	fi
+
 	if [ "$IN_VALID_MACHINE" ]; then
 		echo "Error: Invalid machine."
 		usage
