@@ -49,6 +49,10 @@ DIR=$PWD
 TMPDIR="$PWD/tmp-workdir"
 
 MACHINE=$(cat /proc/cpuinfo | grep Hardware | awk '{print tolower($3);}')
+# In the case of device-tree based kernel, set the machine variable correctly
+if [ $MACHINE == "generic" ]; then
+	MACHINE=$(cat /proc/cpuinfo | grep Hardware | awk '{print tolower($4);}')
+fi
 
 SKIP_NANDTEST="false"
 
@@ -62,6 +66,10 @@ success() {
 		echo 0 > /sys/class/leds/d210\:red/brightness
 		echo heartbeat > /sys/class/leds/d210\:green/trigger
 	fi
+	if [ $MACHINE == "am33xx" ]; then
+		echo 0 > /sys/class/leds/base\:red\:user/brightness
+		echo heartbeat > /sys/class/leds/base\:green\:user/trigger
+	fi
 }
 
 failed() {
@@ -72,6 +80,10 @@ failed() {
 	if [ $MACHINE == "igep0030" ]; then
 		echo 0 > /sys/class/leds/d210\:green/brightness
 		echo 1 > /sys/class/leds/d210\:red/brightness
+	fi
+	if [ $MACHINE == "am33xx" }; then
+		echo 0 > /sys/class/leds/base\:green\:user/brightness
+		echo heartbeat > /sys/class/leds/base\:red\:user/trigger
 	fi
 	exit 1
 }
@@ -102,19 +114,35 @@ prepare() {
 		echo 1 > /sys/class/leds/d210\:green/brightness
 		echo 1 > /sys/class/leds/d210\:red/brightness
 	fi
+	if [ $MACHINE == "am33xx" ]; then
+		echo 1 > /sys/class/leds/base\:red\:user/brightness
+		echo 1 > /sys/class/leds/base\:green\:user/brightness
+	fi
 }
 
-# cleanup previous environmet if exist
+# cleanup previous environment if exist
 cleanup_workdir() {
-	for mtd in mtdblock1 mtdblock2 ; do
-		umount  ${TMPDIR}/${mtd} || true
-	done
+	case "$MACHINE" in
+		"igep0020"| "igep0030" )
+			for mtd in mtdblock1 mtdblock2 ; do
+				umount  ${TMPDIR}/${mtd} || true
+			done
+			;;
+		"igep0033" )
+			umount ${TMPDIR}/ubifs > /dev/null || true
+			ubidetach -p /dev/mtd3 > /dev/null || true
+			;;
+	esac
 
-	rm -fr ${TMPDIR}
+	rm -fr ${TMPDIR} || true
 }
 
 # mark bad blocks
 mark_bad_blocks() {
+	MTDPARTS="0 1 2"
+	if [ $MACHINE == "am33xx" ]; then
+		MTDPARTS="0 1 2 3"
+	fi
 	for i in 0 1 2; do
 		nandtest -m /dev/mtd${i}
 	done
@@ -155,6 +183,73 @@ flash_image() {
 	fi
 
 	sync
+}
+
+# write ubi image to the flash device
+flash_ubi_image() {
+	# erase partitions
+	for i in 0 1 2 3; do
+		flash_erase /dev/mtd${i} 0 0 || failed "erasing partitions"
+	done
+
+	# create working dir if doesn't exists
+	mkdir -p ${TMPDIR}/ubifs
+
+	# start flashing
+
+	# If NAND flash supports sub-pages, UBI will use them. But sometimes you
+	# may want to ask UBI to ignore sub-pages, On AM335x looks like there is
+	# a problem handling sub-pages, for that reason we Force UBI to ignore
+	# sub-pages with (--vid-hdr-offset 2048)
+	# ubiformat -O 2048 /dev/mtd3
+	ubiattach --vid-hdr-offset 2048 -p /dev/mtd3
+	# set volume size to maximum available size
+	ubimkvol /dev/ubi0 -N filesystem -m
+	mount -t ubifs ubi0:filesystem ${TMPDIR}/ubifs
+	if [ $? != 0 ]; then
+		failed "mounting /dev/mtd3 to ${TMPDIR}/ubifs"
+	fi
+
+	echo ""
+	echo "Writing image to the flash  "
+	echo "Be patient, this may take a few minutes"
+	echo ""
+	# first uncompress the image to the File System partition
+	tar -jxf ${IMAGE_FILE} -C ${TMPDIR}/ubifs
+	if [ $? != 0 ]; then
+		failed "Uncompressing the image with error $?"
+	fi
+
+	# then, copy uboot
+	nandwrite -p /dev/mtd1 ${TMPDIR}/ubifs/boot/u-boot.img
+	if [ $? != 0 ]; then
+		failed "writting u-boot.img with error $?"
+	fi
+	# remove U-Boot binaries from filesystem to avoid confusion
+	rm -f ${TMPDIR}/ubifs/u-boot*
+
+	# and finally, the spl. Note that the ROM boot is able to found the
+	# bootloader in the first four blocks.
+	for offset in 0x0 0x20000 0x40000 0x60000; do
+		nandwrite -p -s ${offset} /dev/mtd0 ${TMPDIR}/ubifs/boot/MLO
+		if [ $? != 0 ]; then
+			failed "writting MLO at offset ${offset} with error $?"
+		fi
+	done
+	# remove SPL binaries from filesystem to avoid confusion
+	rm -f ${TMPDIR}/ubifs/MLO*
+
+	# sync, umount and detach ...
+	sync
+	umount ${TMPDIR}/ubifs
+	if [ $? != 0 ]; then
+		failed "umounting ubifs with error $?"
+	fi
+
+	ubidetach -p /dev/mtd3
+	if [ $? != 0 ]; then
+		failed "detaching /dev/mtd3 with error $?"
+	fi
 }
 
 # Usage help
@@ -199,7 +294,10 @@ ensure_command nandtest
 ensure_command mount
 ensure_command umount
 ensure_command tar
-ensure_command writeloader
+# The following commands are only required for OMAP3-based Processor Boards.
+if [ $MACHINE == "igep0020" ] || [ $MACHINE == "igep0030" ]; then
+	ensure_command writeloader
+fi
 
 # parse commandline options
 while [ ! -z "$1" ]; do
@@ -240,7 +338,13 @@ if [ "$SKIP_NANDTEST" == "false" ]; then
 	mark_bad_blocks
 fi
 
-flash_image
+if [ $MACHINE == "am33xx" ]; then
+	# Flash u-boot + ubi filesystem image.
+	flash_ubi_image
+else
+	# Flash image based on IGEP bootloader.
+	flash_image
+fi
 
 # Remove temporary directories
 cleanup_workdir
