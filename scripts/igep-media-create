@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 # igep-media-create - Automatically create a bootable SD cards from images
 #
 # Copyright (C) 2012 - ISEE 2007 SL

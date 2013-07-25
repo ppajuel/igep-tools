@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 # create-android-image - Automatically create an Android image tarball
 #
 # Copyright 2012 - ISEE 2007 SL
