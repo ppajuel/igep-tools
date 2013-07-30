@@ -20,7 +20,7 @@
 # Enric Balletbo i Serra <eballetbo [at] iseebcn.com>
 #
 
-__REVISION__="0"
+__REVISION__="1"
 
 # Required environment variables :
 #     MACHINE
