@@ -30,8 +30,8 @@
 set -e
 
 # include e-functions
-if [ -f e-functions ]; then
-	. e-functions
+if [ -f ./e-functions ]; then
+	. ./e-functions
 elif [ -f /lib/igep-tools/e-functions ]; then
     . /lib/igep-tools/e-functions
 else
@@ -50,7 +50,7 @@ TMPDIR="$PWD/tmp-workdir"
 
 MACHINE=$(cat /proc/cpuinfo | grep Hardware | awk '{print tolower($3);}')
 # In the case of device-tree based kernel, set the machine variable correctly
-if [ $MACHINE == "generic" ]; then
+if [ $MACHINE = "generic" ]; then
 	MACHINE=$(cat /proc/cpuinfo | grep Hardware | awk '{print tolower($4);}')
 fi
 
@@ -58,15 +58,15 @@ SKIP_NANDTEST="false"
 
 success() {
 	echo "Successfully written firmware to flash"
-	if [ $MACHINE == "igep0020" ]; then
+	if [ $MACHINE = "igep0020" ]; then
 		echo 0 > /sys/class/leds/d240\:red/brightness
 		echo heartbeat > /sys/class/leds/d240\:green/trigger
 	fi
-	if [ $MACHINE == "igep0030" ]; then
+	if [ $MACHINE = "igep0030" ]; then
 		echo 0 > /sys/class/leds/d210\:red/brightness
 		echo heartbeat > /sys/class/leds/d210\:green/trigger
 	fi
-	if [ $MACHINE == "am33xx" ]; then
+	if [ $MACHINE = "am33xx" ]; then
 		echo 0 > /sys/class/leds/base\:red\:user/brightness
 		echo heartbeat > /sys/class/leds/base\:green\:user/trigger
 	fi
@@ -74,14 +74,14 @@ success() {
 
 failed() {
 	echo "Error: Flash script failed with error - $1"
-	if [ $MACHINE == "igep0020" ]; then
+	if [ $MACHINE = "igep0020" ]; then
 		echo 0 > /sys/class/leds/d240\:green/brightness
 	fi
-	if [ $MACHINE == "igep0030" ]; then
+	if [ $MACHINE = "igep0030" ]; then
 		echo 0 > /sys/class/leds/d210\:green/brightness
 		echo 1 > /sys/class/leds/d210\:red/brightness
 	fi
-	if [ $MACHINE == "am33xx" }; then
+	if [ $MACHINE = "am33xx" }; then
 		echo 0 > /sys/class/leds/base\:green\:user/brightness
 		echo heartbeat > /sys/class/leds/base\:red\:user/trigger
 	fi
@@ -106,15 +106,15 @@ ensure_file() {
 }
 
 prepare() {
-	if [ $MACHINE == "igep0020" ]; then
+	if [ $MACHINE = "igep0020" ]; then
 		echo 1 > /sys/class/leds/d240\:green/brightness
 		echo 1 > /sys/class/leds/d240\:red/brightness
 	fi
-	if [ $MACHINE == "igep0030" ]; then
+	if [ $MACHINE = "igep0030" ]; then
 		echo 1 > /sys/class/leds/d210\:green/brightness
 		echo 1 > /sys/class/leds/d210\:red/brightness
 	fi
-	if [ $MACHINE == "am33xx" ]; then
+	if [ $MACHINE = "am33xx" ]; then
 		echo 1 > /sys/class/leds/base\:red\:user/brightness
 		echo 1 > /sys/class/leds/base\:green\:user/brightness
 	fi
@@ -140,7 +140,7 @@ cleanup_workdir() {
 # mark bad blocks
 mark_bad_blocks() {
 	MTDPARTS="0 1 2"
-	if [ $MACHINE == "am33xx" ]; then
+	if [ $MACHINE = "am33xx" ]; then
 		MTDPARTS="0 1 2 3"
 	fi
 	for i in 0 1 2; do
@@ -295,7 +295,7 @@ ensure_command mount
 ensure_command umount
 ensure_command tar
 # The following commands are only required for OMAP3-based Processor Boards.
-if [ $MACHINE == "igep0020" ] || [ $MACHINE == "igep0030" ]; then
+if [ $MACHINE = "igep0020" ] || [ $MACHINE = "igep0030" ]; then
 	ensure_command writeloader
 fi
 
@@ -331,14 +331,14 @@ cleanup_workdir
 # Ensure file image exists
 ensure_file ${IMAGE_FILE}
 
-if [ "$SKIP_NANDTEST" == "false" ]; then
+if [ "$SKIP_NANDTEST" = "false" ]; then
 	echo ""
 	echo "Mark blocks bad if they appear so "
 	echo ""
 	mark_bad_blocks
 fi
 
-if [ $MACHINE == "am33xx" ]; then
+if [ $MACHINE = "am33xx" ]; then
 	# Flash u-boot + ubi filesystem image.
 	flash_ubi_image
 else

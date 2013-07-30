@@ -35,7 +35,7 @@ set -e
 
 # include e-functions
 if [ -f e-functions ]; then
-	. e-functions
+	. ./e-functions
 elif [ -f /lib/igep-tools/e-functions ]; then
     . /lib/igep-tools/e-functions
 else
@@ -141,7 +141,7 @@ cleanup_sd() {
 
 	for mmc in $MMC1 $MMC2 $MMC3; do
 		if test -n "$mmc"; then
-			sudo umount ${mmc} &> /dev/null || true
+			sudo umount ${mmc} >/dev/null 2>&1|| true
 		fi
 	done
 
@@ -186,7 +186,7 @@ prepare_partitions() {
 	sleep 3
 	for mmc in $MMC1 $MMC2 $MMC3; do
 		if test -n "$mmc"; then
-			sudo umount ${mmc} &> /dev/null || true
+			sudo umount ${mmc} >/dev/null 2>&1 || true
 		fi
 	done
 
@@ -220,7 +220,7 @@ populate_boot() {
 
 	sudo cp -f ${TMPDIR}/binary/MLO ${TMPDIR}/disk/
 
-	if [ "$BOOTLOADER_TYPE" == "uboot" ]; then
+	if [ "$BOOTLOADER_TYPE" = "uboot" ]; then
 		sudo cp -f ${TMPDIR}/binary/u-boot.img ${TMPDIR}/disk/
 	else
 		sudo cp -f ${TMPDIR}/binary/zImage ${TMPDIR}/disk/
@@ -258,7 +258,7 @@ populate_rootfs() {
 	sudo cp -pL ${TMPDIR}/disk/boot/MLO ${TMPDIR}/binary/
 	# get kernel image from rootfs
 	sudo cp -pL ${TMPDIR}/disk/boot/zImage ${TMPDIR}/binary/
-	if [ "$BOOTLOADER_TYPE" == "uboot" ]; then
+	if [ "$BOOTLOADER_TYPE" = "uboot" ]; then
 		cp -pL ${TMPDIR}/disk/boot/u-boot.img ${TMPDIR}/binary/
 	fi
 
@@ -308,9 +308,10 @@ check_mmc() {
 		echo "mount:"
  		mount | grep -v none | grep "/dev/" --color=never
 		echo ""
-		if [ "$ASSUME_YES" == "false" ]; then
-			read -p "Are you 100% sure, on selecting [${MMC}] (y/n)? "
-			[ "$REPLY" == "y" ] || exit
+		if [ "$ASSUME_YES" = "false" ]; then
+			echo -n "Are you 100% sure, on selecting [${MMC}] (y/n)?"
+			read -r REPLY
+			[ "$REPLY" = "y" ] || exit
 		fi
 		echo ""
 	else
@@ -319,9 +320,10 @@ check_mmc() {
 		echo ""
 		echo "sudo sfdisk -l:"
 		sudo LC_ALL=C sfdisk -l | grep "[Disk] /dev/" --color=never
-		if [ "$ASSUME_YES" == "false" ]; then
-			read -p "Are you 100% sure, on selecting [${MMC}] (y/n)? "
-			[ "$REPLY" == "y" ] || exit
+		if [ "$ASSUME_YES" = "false" ]; then
+			echo -n "Are you 100% sure, on selecting [${MMC}] (y/n)? "
+			read -r REPLY
+			[ "$REPLY" = "y" ] || exit
 		fi
 		echo ""
 		echo "mount:"
@@ -384,8 +386,8 @@ check_bootloader() {
 	fi
 	if [ "$IN_VALID_IMAGE_TYPE" ]; then
 		echo "Error: Invalid bootloader type. Options are:"
-		echo "\t- uboot"
-		echo "\t- igep"
+		echo "    - uboot"
+		echo "    - igep"
 		usage
 	fi
 }

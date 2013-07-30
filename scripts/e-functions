@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 # e-functions - This file contains functions to be used by most or all
 #               igep-tools shell scripts.
 #
@@ -103,14 +103,14 @@ init=/init
 EOF
 	fi
 
-	if [ "$ROOTFSTYPE" == "mmc" ]; then
+	if [ "$ROOTFSTYPE" = "mmc" ]; then
 		cat << EOF | sudo tee -a ${OUTPUTDIR}/${INIFILE}
 ;  --- Configure MMC boot ---
 root=/dev/mmcblk0p2 rw rootwait
 EOF
 	fi
 
- 	if [ "$ROOTFSTYPE" == "jffs2" ]; then
+	if [ "$ROOTFSTYPE" = "jffs2" ]; then
 		cat << EOF | sudo tee -a ${OUTPUTDIR}/${INIFILE}
 ;  --- Configure JFFS2 FS boot ---
 root=/dev/mtdblock2
@@ -119,16 +119,16 @@ EOF
 	fi
 
 	echo "; Machine configuration" | sudo tee -a ${OUTPUTDIR}/${INIFILE}
-	if [ "$MACHINE" == "igep0020" ]; then
+	if [ "$MACHINE" = "igep0020" ]; then
     	echo "buddy=igep0022" | sudo tee -a ${OUTPUTDIR}/${INIFILE}
 	fi
-	if [ "$MACHINE" == "igep0030" ]; then
+	if [ "$MACHINE" = "igep0030" ]; then
 		sudo sed -i 's/MachineID=2344/MachineID=2717/' ${OUTPUTDIR}/${INIFILE}
 	fi
-	if [ "$MACHINE" == "igep0032" ]; then
+	if [ "$MACHINE" = "igep0032" ]; then
 		sudo sed -i 's/MachineID=2344/MachineID=3203/' ${OUTPUTDIR}/${INIFILE}
 	fi
-	if [ "$MACHINE" == "igep0030" -o "$MACHINE" == "igep0032" ]; then
+	if [ "$MACHINE" = "igep0030" -o "$MACHINE" = "igep0032" ]; then
 		echo "buddy=base0010 buddy.revision=B" | sudo tee -a ${OUTPUTDIR}/${INIFILE}
 		echo "omapdss.def_disp=lcd-70" | sudo tee -a ${OUTPUTDIR}/${INIFILE}
 	fi
