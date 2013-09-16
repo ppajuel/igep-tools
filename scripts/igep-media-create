@@ -410,7 +410,11 @@ required options:
     specify file used to create the bootable SD card.
 
 --machine <machine>
-    specify the machine. Options are igep0020, igep0030 or igep0032
+    specify the machine. Options are:
+        igep0020 - IGEPv2
+        igep0030 - IGEP COM MODULE
+        igep0032 - IGEP COM PROTON
+        igep0033 - IGEP COM AQUILA
 
 Additional/Optional options:
 -h --help
