@@ -144,7 +144,7 @@ mark_bad_blocks() {
 		MTDPARTS="0 1 2 3"
 	fi
 	for i in 0 1 2; do
-		nandtest -m /dev/mtd${i}
+		nandtest -m /dev/mtd${i} || failed "checking for bad blocks"
 	done
 }
 
