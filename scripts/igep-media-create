@@ -26,6 +26,7 @@
 #
 # AUTHORS
 # Enric Balletbo i Serra <eballetbo [at] gmail.com>
+# Pau Pajuelo Llagostera <ppajuelo [at] iseebcn.com>
 #
 # TODO
 #   - do not run the script when the rootfs is in mmc.
