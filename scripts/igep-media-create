@@ -1,7 +1,7 @@
 #!/bin/sh
-# igep-media-create - Automatically create a bootable SD cards from images
+# igep-media-create - Automatically create a bootable SD cards or HD from images
 #
-# Copyright (C) 2012 - ISEE 2007 SL
+# Copyright (C) 2016 - ISEE 2007 SL
 #
 # Based on linaro-media-script by
 #   Copyright 2010 Robert Nelson <robertcnelson@gmail.com>
@@ -21,7 +21,7 @@
 #
 # DESCRIPTION
 # 'igep-media-create' is a tool that helps users create a new bootable SD cards
-# images.  Invoking it without any arguments will display help screens for
+# or HD images.  Invoking it without any arguments will display help screens for
 # the 'igep-media-create' command. Please use that interface for detailed help.
 #
 # AUTHORS
@@ -57,16 +57,6 @@ ensure_command() {
 	)
 }
 
-# These commands are required
-ensure_command uuidgen uuid-runtime
-ensure_command parted parted
-ensure_command sfdisk util-linux
-ensure_command fdisk util-linux
-ensure_command wget wget
-ensure_command mkfs.ext3 e2fsprogs
-ensure_command mkfs.vfat dosfstools
-ensure_command realpath realpath
-
 # Defaults
 RFS=ext3
 ASSUME_YES="false"
@@ -86,6 +76,16 @@ CYLINDER_ARG=""
 # Environment
 DIR=$PWD
 TMPDIR="$PWD/tmp-workdir"
+
+# These commands are required
+ensure_command uuidgen uuid-runtime
+ensure_command parted parted
+ensure_command sfdisk util-linux
+ensure_command fdisk util-linux
+ensure_command wget wget
+ensure_command mkfs.${RFS} e2fsprogs
+ensure_command mkfs.vfat dosfstools
+ensure_command realpath realpath
 
 wait_for_partitions_to_appear() {
 	for device in /dev/disk/by-id/*; do
@@ -152,25 +152,46 @@ cleanup_sd() {
 }
 
 create_partitions() {
-	case $IMAGE_TYPE in
-		yocto)
-		# Create a VFAT partition of 9 cylinders which is about 64M
-		# and a linux partition of the rest
-		sudo sfdisk -D -H $HEADS -S $SECTORS $CYLINDER_ARG $MMC << THEEND
+	case "$IMAGE_TYPE" in
+	yocto)
+		case "$MACHINE" in
+		"igep0020"| "igep0030" | "igep0032" | "igep0033")
+			# Create a VFAT partition of 9 cylinders which is about 64M
+			# and a linux partition of the rest
+			sudo sfdisk -D -H $HEADS -S $SECTORS $CYLINDER_ARG $MMC << THEEND
 ,9,0x0C,*
 ,,,-
 THEEND
-			;;
-		android)
-	# Create a VFAT partition of 9 cylinders which is about 64M,
-	# a linux partition of 90 cylinders which is about 640M
-	# and a VFAT partition for the rest
-	sudo sfdisk -D -H $HEADS -S $SECTORS $CYLINDER_ARG $MMC << THEEND
+		;;
+		"igep0046")
+			# Create a non partitioned area of 1 cylinder
+			# Create a VFAT partition of 8 cylinders which is about 57M
+			# and a linux partition of the rest
+			sudo sfdisk -D -H $HEADS -S $SECTORS $CYLINDER_ARG $MMC << THEEND
+1,8,0x0C,*
+9,,,-
+THEEND
+		;;
+		esac
+	;;
+	android)
+		case "$MACHINE" in
+		"igep0020"| "igep0030" | "igep0032" )
+			# Create a VFAT partition of 9 cylinders which is about 64M,
+			# a linux partition of 90 cylinders which is about 640M
+			# and a VFAT partition for the rest
+			sudo sfdisk -D -H $HEADS -S $SECTORS $CYLINDER_ARG $MMC << THEEND
 ,9,0x0C,*
 ,90,,-
 ,,0x0C,-
 THEEND
-			;;
+		;;
+		*)
+			echo "Error: $MACHINE doesn't support Android OS officially"
+			exit 1
+		;;
+		esac
+	;;
 	esac
 }
 
@@ -192,7 +213,7 @@ prepare_partitions() {
 	done
 
 	echo ""
-	echo "Formating Boot Partition"
+	echo "Formating ${BOOT_LABEL} Partition"
 	echo ""
 	sudo mkfs.vfat -F 32 ${MMC1} -n ${BOOT_LABEL}
 
@@ -216,23 +237,39 @@ populate_boot() {
 	echo "Be patient, this may take a few minutes"
 	echo ""
 
+	# Create TMP folder and mount it Boot partition
 	mkdir -p ${TMPDIR}/disk || true
 	sudo mount ${MMC1} ${TMPDIR}/disk
 
-	sudo cp -f ${TMPDIR}/binary/MLO ${TMPDIR}/disk/
+	case "$MACHINE" in
+	"igep0020"| "igep0030" | "igep0032" | "igep0033")
+		# Copy IGEP-X-Loader or U-boot SPL
+		sudo cp -f ${TMPDIR}/binary/MLO ${TMPDIR}/disk/
 
-	if [ "$BOOTLOADER_TYPE" = "uboot" ]; then
-		sudo cp -f ${TMPDIR}/binary/u-boot.img ${TMPDIR}/disk/
-	else
+		if [ "$BOOTLOADER_TYPE" = "uboot" ]; then
+			# Copy U-boot.img
+			sudo cp -f ${TMPDIR}/binary/u-boot.img ${TMPDIR}/disk/
+		else
+			# Copy zImage
+			sudo cp -f ${TMPDIR}/binary/zImage ${TMPDIR}/disk/
+			# create INI file based on script arguments
+			create_ini mmc ${TMPDIR}/disk/
+		fi
+
+		if [ $? != 0 ]; then
+			echo "Error: create_init function failed with error $?"
+			exit 1
+		fi
+	;;
+	"igep0046")
+		# Copy U-boot.imx (RAW mode) at firsts sectors
+		sudo dd if=${TMPDIR}/binary/u-boot.imx of=${MMC} bs=512  seek=2 > /dev/null
+		# Copy zImage
 		sudo cp -f ${TMPDIR}/binary/zImage ${TMPDIR}/disk/
-		# create INI file based on script arguments
-		create_ini mmc ${TMPDIR}/disk/
-	fi
-
-	if [ $? != 0 ]; then
-		echo "Error: create_init function failed with error $?"
-		exit 1
-	fi
+		# Copy Device Trees
+		sudo cp -f ${TMPDIR}/binary/imx6*.dtb ${TMPDIR}/disk/
+	;;
+	esac
 
 	# cleanup
 	sync
@@ -247,21 +284,35 @@ populate_rootfs() {
 	echo "Be patient, this may take a few minutes"
 	echo ""
 
+	# Create temporary folder and mount it rootfs partition
+	# Prepare partition to put image into firmware directory
 	mkdir -p ${TMPDIR}/disk || true
 	mkdir -p ${TMPDIR}/binary || true
-
 	sudo mount ${MMC2} ${TMPDIR}/disk
-
 	# uncompress the rootfs
 	sudo tar -jxf ${IMAGE_FILE} -C ${TMPDIR}/disk/
- 
-	# get bootloader from rootfs
-	sudo cp -pL ${TMPDIR}/disk/boot/MLO ${TMPDIR}/binary/
-	# get kernel image from rootfs
-	sudo cp -pL ${TMPDIR}/disk/boot/zImage ${TMPDIR}/binary/
-	if [ "$BOOTLOADER_TYPE" = "uboot" ]; then
-		cp -pL ${TMPDIR}/disk/boot/u-boot.img ${TMPDIR}/binary/
-	fi
+
+	case "$MACHINE" in
+	"igep0020"| "igep0030" | "igep0032" | "igep0033")
+		# get IGEP-X-Loader or U-boot SPL from rootfs
+		sudo cp -pL ${TMPDIR}/disk/boot/MLO ${TMPDIR}/binary/
+		# get zImage from rootfs
+		sudo cp -pL ${TMPDIR}/disk/boot/zImage ${TMPDIR}/binary/
+
+		if [ "$BOOTLOADER_TYPE" = "uboot" ]; then
+			# get U-boot.img from rootfs
+			cp -pL ${TMPDIR}/disk/boot/u-boot.img ${TMPDIR}/binary/
+		fi
+	;;
+	"igep0046")
+		# get zImage from rootfs
+		sudo cp -pL ${TMPDIR}/disk/boot/zImage ${TMPDIR}/binary/
+		# get U-boot.imx from rootfs
+		sudo cp -pL ${TMPDIR}/disk/boot/u-boot.imx ${TMPDIR}/binary/
+		# get Device Trees from rootfs
+		sudo cp -f ${TMPDIR}/disk/boot/imx6*.dtb ${TMPDIR}/binary/
+	;;
+	esac
 
 	# put the image into firmware directory, useful for flash current image
 	sudo mkdir -p ${TMPDIR}/disk/opt/firmware
@@ -353,6 +404,10 @@ check_machine() {
 		unset IN_VALID_MACHINE
 	fi
 
+	if test "-$MACHINE-" = "-igep0046-"; then
+		unset IN_VALID_MACHINE
+	fi
+
 	if [ "$IN_VALID_MACHINE" ]; then
 		echo "Error: Invalid machine."
 		usage
@@ -381,6 +436,9 @@ check_bootloader() {
 	if test "-$BOOTLOADER_TYPE-" = "-igep-"; then
 		unset IN_VALID_BOOTLOADER
 	fi
+	if test "-$BOOTLOADER_TYPE-" = "-ubootimx-"; then
+		unset IN_VALID_BOOTLOADER
+	fi
 	# Empty
 	if test "-$BOOTLOADER_TYPE-" = "--"; then
 		unset IN_VALID_BOOTLOADER
@@ -388,6 +446,7 @@ check_bootloader() {
 	if [ "$IN_VALID_IMAGE_TYPE" ]; then
 		echo "Error: Invalid bootloader type. Options are:"
 		echo "    - uboot"
+		echo "    - ubootimx"
 		echo "    - igep"
 		usage
 	fi
@@ -408,7 +467,7 @@ required options:
     unformated MMC Card
 
 --image <filename>
-    specify file used to create the bootable SD card.
+    specify file used to create the bootable SD card or HD.
 
 --machine <machine>
     specify the machine. Options are:
@@ -416,13 +475,14 @@ required options:
         igep0030 - IGEP COM MODULE
         igep0032 - IGEP COM PROTON
         igep0033 - IGEP COM AQUILA
+        igep0046 - IGEP SMARC iMX6
 
 Additional/Optional options:
 -h --help
     this help
 
 --bootloader <bootloader type>
-    specify the bootloader type. Options are uboot, igep.
+    specify the bootloader type. Options are uboot, ubootimx and igep.
 
 --buddy <buddy>
 	specify the buddy. E.g.
@@ -450,7 +510,7 @@ version() {
 	echo "$(basename $0) ${__VERSION__}"
 cat << EOF
 
-Copyright (C) 2012 - ISEE 2007 SL
+Copyright (C) 2016 - ISEE 2007 SL
 License GPLv2: GNU GPL version 2 or later <http://gnu.org/licenses/gpl.html>.
 This is free software: you are free to change and redistribute it.
 There is NO WARRANTY, to the extent permitted by law.
@@ -538,8 +598,11 @@ if test "-$BOOTLOADER_TYPE-" = "--"; then
 		"igep0020"| "igep0030" | "igep0032")
 			BOOTLOADER_TYPE="igep"
 			;;
-		*)
+		"igep0033")
 			BOOTLOADER_TYPE="uboot"
+			;;
+		"igep0046")
+			BOOTLOADER_TYPE="ubootimx"
 			;;
 	esac
 fi

@@ -1,7 +1,7 @@
 #!/bin/sh
-# igep-flash - Flash the firmware to the OneNAND/NAND
+# igep-flash - Flash the firmware to the OneNAND/NAND/eMMC
 #
-# Copyright 2012 - ISEE 2007 SL
+# Copyright (C) 2016 - ISEE 2007 SL
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License version 3 as published
@@ -48,14 +48,24 @@ unset IMAGE_FILE MACHINE
 # Environment
 DIR=$PWD
 TMPDIR="$PWD/tmp-workdir"
+SKIP_NANDTEST="false"
+MMC="mmcblk2"
+MMCDEV="/dev/$MMC"
+HEADS=255
+SECTORS=63
+SECTORSIZE=512
+CYLINDER_ARG=""
+MMCBLK_FORCE_RO=0
+BOOT_LABEL=boot
+RFS_LABEL=rootfs
+RFS=ext3
+RFS_UUID=`cat /proc/sys/kernel/random/uuid`
 
 MACHINE=$(cat /proc/cpuinfo | grep Hardware | awk '{print tolower($3);}')
 # In the case of device-tree based kernel, set the machine variable correctly
-if [ $MACHINE = "generic" ]; then
+if [ $MACHINE = "generic" ] || [ $MACHINE = "freescale" ]; then
 	MACHINE=$(cat /proc/cpuinfo | grep Hardware | awk '{print tolower($4);}')
 fi
-
-SKIP_NANDTEST="false"
 
 success() {
 	echo "Successfully written firmware to flash"
@@ -71,6 +81,10 @@ success() {
 		echo 0 > /sys/class/leds/base\:red\:user/brightness
 		echo heartbeat > /sys/class/leds/base\:green\:user/trigger
 	fi
+	if [ $MACHINE = "i.mx6" ]; then
+		echo 0 > /sys/class/leds/igep\:red\:led0/brightness
+		echo heartbeat > /sys/class/leds/igep\:green\:led0/trigger
+	fi
 }
 
 failed() {
@@ -85,6 +99,10 @@ failed() {
 	if [ $MACHINE = "am33xx" }; then
 		echo 0 > /sys/class/leds/base\:green\:user/brightness
 		echo heartbeat > /sys/class/leds/base\:red\:user/trigger
+	fi
+	if [ $MACHINE = "i.mx6" ]; then
+		echo 0 > /sys/class/leds/igep\:green\:led0/brightness
+		echo heartbeat > /sys/class/leds/igep\:red\:led0/trigger
 	fi
 	exit 1
 }
@@ -119,6 +137,10 @@ prepare() {
 		echo 1 > /sys/class/leds/base\:red\:user/brightness
 		echo 1 > /sys/class/leds/base\:green\:user/brightness
 	fi
+	if [ $MACHINE = "i.mx6" ]; then
+		echo 1 > /sys/class/leds/igep\:green\:led0/brightness
+		echo 1 > /sys/class/leds/igep\:red\:led0/brightness
+	fi
 }
 
 # cleanup previous environment if exist
@@ -132,6 +154,11 @@ cleanup_workdir() {
 		"igep0033" )
 			umount ${TMPDIR}/ubifs > /dev/null || true
 			ubidetach -p /dev/mtd3 > /dev/null || true
+			;;
+		"i.mx6" )
+			for mtd in "${MMC}p1" "${MMC}p2" ; do
+				umount  ${TMPDIR}/${mtd} || true
+			done
 			;;
 	esac
 
@@ -183,6 +210,137 @@ flash_image() {
 		failed "writting the bootloader with error $?"
 	fi
 
+	sync
+}
+
+cleanup_emmc() {
+	echo ""
+	echo "Umounting Partitions"
+	echo ""
+
+	for emmc in ${MMCDEV}* ; do
+		if test -n "$emmc"; then
+			umount ${emmc} >/dev/null 2>&1|| true
+		fi
+	done
+
+	if [ "${MMCDEV}" ]; then
+		parted -s ${MMCDEV} mklabel msdos
+	fi
+}
+
+create_partitions() {
+	case "$MACHINE" in
+	"i.mx6")
+		# Create a non partitioned area of 1 cylinder
+		# Create a VFAT partition of 8 cylinders which is about 57M
+		# and a linux partition of the rest
+		sfdisk -D -H $HEADS -S $SECTORS $CYLINDER_ARG $MMCDEV << THEEND
+1,8,0x0C,*
+9,,,-
+THEEND
+	;;
+	*)
+		failed "Error: $MACHINE doesn't support create partition table"
+	;;
+	esac
+}
+
+prepare_partitions() {
+	echo ""
+	echo "Umounting Partitions"
+	echo ""
+
+	# It looks like somehow automounts the partitions after we
+	# repartition a disk so we need to unmount them here to create the
+	# filesystem. As a HACK in some systems a small delay is required, we
+	# should investigate a little more about this issue.
+	sleep 3
+	for emmc in ${MMCDEV}* ; do
+		if test -n "$emmc"; then
+			umount ${emmc} >/dev/null 2>&1|| true
+		fi
+	done
+
+	echo ""
+	echo "Formating ${BOOT_LABEL} Partition"
+	echo ""
+	mkfs.vfat -F 32 "${MMCDEV}p1" -n ${BOOT_LABEL}
+
+	echo ""
+	echo "Formating ${RFS} Partition"
+	echo ""
+	mkfs.${RFS} -U "$RFS_UUID" "${MMCDEV}p2" -L ${RFS_LABEL}
+}
+
+# write image to eMMC
+flash_emmc_image() {
+	cleanup_emmc
+	create_partitions
+	echo -n "waiting for partitioning to settle ..."
+	sync
+	echo "done."
+	prepare_partitions
+
+	if [ -z "${TMPDIR}" ]; then
+		echo "Warning: The ${TMPDIR} directory exist, must be removed!"
+		rm -fr ${TMPDIR}
+	fi
+
+	# Create temporary partition directories
+	mkdir -p ${TMPDIR}/"${MMC}p1"
+	mkdir -p ${TMPDIR}/"${MMC}p2"
+
+	# Mount boot and rootfs partition
+	mount -t vfat "${MMCDEV}p1" ${TMPDIR}/"${MMC}p1"
+	if [ $? != 0 ]; then
+		failed "mounting ${MMCDEV}p1 to ${TMPDIR}/${MMC}p1"
+	fi
+	mount -t ${RFS} "${MMCDEV}p2" ${TMPDIR}/"${MMC}p2"
+	if [ $? != 0 ]; then
+		failed "mounting ${MMCDEV}p2 to ${TMPDIR}/${MMC}p2"
+	fi
+
+	echo ""
+	echo "Writing image to the flash  "
+	echo "Be patient, this may take a few minutes"
+	echo ""
+
+	# uncompress the rootfs
+	tar -jxf ${IMAGE_FILE} -C ${TMPDIR}/"${MMC}p2"
+	if [ $? != 0 ]; then
+		failed "Uncompressing the image with error $?"
+	fi
+
+	sync
+
+	# then, copy kernel and dtb image from second partition to the boot partition
+	cp ${TMPDIR}/"${MMC}p2"/boot/zImage ${TMPDIR}/"${MMC}p1"
+	if [ $? != 0 ]; then
+		failed "writting zImage with error $?"
+	fi
+	cp -f ${TMPDIR}/"${MMC}p2"/boot/imx6*.dtb ${TMPDIR}/"${MMC}p1"
+	if [ $? != 0 ]; then
+		failed "writting imx6*.dtb with error $?"
+	fi
+
+	# unblock eMMC and write U-boot.imx
+	MMCBLK_FORCE_RO=`cat /sys/block/${MMC}/force_ro`
+	echo 0 > /sys/block/${MMC}/force_ro
+	if [ $? != 0 ]; then
+		failed "writting to /sys/block/${MMC}/force_ro with error $?"
+	fi
+	sync
+	dd if=${TMPDIR}/"${MMC}p2"/boot/u-boot.imx of=${MMCDEV} bs=512  seek=2  > /dev/null
+	if [ $? != 0 ]; then
+		failed "writting to ${MMCDEV} with error $?"
+	fi
+
+	# set eMMC protection as before
+	echo ${MMCBLK_FORCE_RO} > /sys/block/${MMC}/force_ro
+	if [ $? != 0 ]; then
+		failed "writting to /sys/block/${MMC}/force_ro with error $?"
+	fi
 	sync
 }
 
@@ -278,7 +436,7 @@ version() {
 	echo "$(basename $0) ${__VERSION__}"
 cat << EOF
 
-Copyright (C) 2012 - ISEE 2007 SL
+Copyright (C) 2016 - ISEE 2007 SL
 License GPLv2: GNU GPL version 2 or later <http://gnu.org/licenses/gpl.html>.
 This is free software: you are free to change and redistribute it.
 There is NO WARRANTY, to the extent permitted by law.
@@ -295,6 +453,14 @@ ensure_command nandtest
 ensure_command mount
 ensure_command umount
 ensure_command tar
+# The following commands are only required for i.mx6-based Processor Boards.
+if [ $MACHINE = "i.mx6" ] ; then
+ensure_command parted parted
+ensure_command sfdisk util-linux
+ensure_command mkfs.${RFS} e2fsprogs
+ensure_command mkfs.vfat dosfstools
+ensure_file "/proc/sys/kernel/random/uuid"
+fi
 # The following commands are only required for OMAP3-based Processor Boards.
 if [ $MACHINE = "igep0020" ] || [ $MACHINE = "igep0030" ]; then
 	ensure_command writeloader
@@ -336,16 +502,25 @@ if [ "$SKIP_NANDTEST" = "false" ]; then
 	echo ""
 	echo "Mark blocks bad if they appear so "
 	echo ""
-	mark_bad_blocks
+	if [ $MACHINE = "igep0020" ] || [ $MACHINE = "igep0030" ] || [ $MACHINE = "am33xx" ] ; then
+		mark_bad_blocks
+	fi
 fi
 
-if [ $MACHINE = "am33xx" ]; then
-	# Flash u-boot + ubi filesystem image.
-	flash_ubi_image
-else
-	# Flash image based on IGEP bootloader.
-	flash_image
-fi
+case "$MACHINE" in
+	"am33xx" )
+		# Flash u-boot + ubi filesystem image.
+		flash_ubi_image
+		;;
+	"i.mx6" )
+		# Flash u-boot.imx + emmc filesystem image.
+		flash_emmc_image
+		;;
+	*)
+		# Flash image based on IGEP bootloader.
+		flash_image
+		;;
+esac
 
 # Remove temporary directories
 cleanup_workdir

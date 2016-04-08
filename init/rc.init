@@ -15,7 +15,25 @@
 PATH=/sbin:/usr/sbin:/bin:/usr/bin
 
 NAME="igep-tools"
-IMAGE_FILE="/opt/firmware/demo-image-sato-igep00x0.tar.bz2"
+
+MACHINE=$(cat /proc/cpuinfo | grep Hardware | awk '{print tolower($3);}')
+# In the case of device-tree based kernel, set the machine variable correctly
+if [ $MACHINE = "generic" ] || [ $MACHINE = "freescale" ]; then
+	MACHINE=$(cat /proc/cpuinfo | grep Hardware | awk '{print tolower($4);}')
+fi
+
+case "$MACHINE" in
+	"igep0020"| "igep0030" )
+		IMAGE_FILE="/opt/firmware/demo-image-sato-igep00x0.tar.bz2"
+		;;
+	"am33xx" )
+		IMAGE_FILE="/opt/firmware/demo-image-sato-igep0033.tar.bz2"
+		;;
+	"i.mx6" )
+		IMAGE_FILE="/opt/firmware/isee-image-dev-imx6*-igep0046.tar.bz2"
+		;;
+esac
+
 EFLASH="/usr/bin/igep-flash --image ${IMAGE_FILE}"
 
 # Read configuration variable file if it is present
