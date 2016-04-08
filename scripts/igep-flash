@@ -21,7 +21,7 @@
 # Please use that interface for detailed help.
 #
 # AUTHORS
-# Enric Balletbo i Serra <eballetbo [at] iseebcn.com>
+# Enric Balletbo i Serra <eballetbo [at] gmail.com>
 #
 # TODO
 #   - Do not run the script when the rootfs is in flash.

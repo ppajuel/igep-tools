@@ -25,7 +25,7 @@
 # the 'igep-media-create' command. Please use that interface for detailed help.
 #
 # AUTHORS
-# Enric Balletbo i Serra <eballetbo [at] iseebcn.com>
+# Enric Balletbo i Serra <eballetbo [at] gmail.com>
 #
 # TODO
 #   - do not run the script when the rootfs is in mmc.
