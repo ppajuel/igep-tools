@@ -151,7 +151,7 @@ cleanup_workdir() {
 				umount  ${TMPDIR}/${mtd} || true
 			done
 			;;
-		"igep0033" )
+		"am33xx" )
 			umount ${TMPDIR}/ubifs > /dev/null || true
 			ubidetach -p /dev/mtd3 > /dev/null || true
 			;;
@@ -167,11 +167,12 @@ cleanup_workdir() {
 
 # mark bad blocks
 mark_bad_blocks() {
-	MTDPARTS="0 1 2"
 	if [ $MACHINE = "am33xx" ]; then
 		MTDPARTS="0 1 2 3"
+	else
+		MTDPARTS="0 1 2"
 	fi
-	for i in 0 1 2; do
+	for i in ${MTDPARTS}; do
 		nandtest -m /dev/mtd${i} || failed "checking for bad blocks"
 	done
 }
