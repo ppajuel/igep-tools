@@ -70,20 +70,26 @@ fi
 success() {
 	echo "Successfully written firmware to flash"
 	if [ $MACHINE = "igep0020" ]; then
-		echo 0 > /sys/class/leds/d240\:red/brightness
 		echo heartbeat > /sys/class/leds/d240\:green/trigger
+		echo 0 > /sys/class/leds/d240\:red/brightness
+		echo heartbeat > /sys/class/leds/d440\:green/trigger
+		echo 0 > /sys/class/leds/d440\:red/brightness
 	fi
 	if [ $MACHINE = "igep0030" ]; then
-		echo 0 > /sys/class/leds/d210\:red/brightness
 		echo heartbeat > /sys/class/leds/d210\:green/trigger
+		echo 0 > /sys/class/leds/d210\:red/brightness
+		echo heartbeat > /sys/class/leds/d440\:green/trigger
+		echo 0 > /sys/class/leds/d440\:red/brightness
 	fi
 	if [ $MACHINE = "am33xx" ]; then
-		echo 0 > /sys/class/leds/base\:red\:user/brightness
 		echo heartbeat > /sys/class/leds/base\:green\:user/trigger
+		echo 0 > /sys/class/leds/base\:red\:user/brightness
 	fi
 	if [ $MACHINE = "i.mx6" ]; then
-		echo 0 > /sys/class/leds/igep\:red\:led0/brightness
 		echo heartbeat > /sys/class/leds/igep\:green\:led0/trigger
+		echo 0 > /sys/class/leds/igep\:red\:led0/brightness
+		echo heartbeat > /sys/class/leds/igep\:green\:led1/trigger
+		echo 0 > /sys/class/leds/igep\:red\:led1/brightness
 	fi
 }
 
@@ -91,10 +97,15 @@ failed() {
 	echo "Error: Flash script failed with error - $1"
 	if [ $MACHINE = "igep0020" ]; then
 		echo 0 > /sys/class/leds/d240\:green/brightness
+		echo heartbeat > /sys/class/leds/d240\:red/trigger
+		echo 0 > /sys/class/leds/d440\:green/brightness
+		echo heartbeat > /sys/class/leds/d440\:red/trigger
 	fi
 	if [ $MACHINE = "igep0030" ]; then
 		echo 0 > /sys/class/leds/d210\:green/brightness
-		echo 1 > /sys/class/leds/d210\:red/brightness
+		echo heartbeat > /sys/class/leds/d210\:red/trigger
+		echo 0 > /sys/class/leds/d440\:green/brightness
+		echo heartbeat > /sys/class/leds/d440\:red/trigger
 	fi
 	if [ $MACHINE = "am33xx" }; then
 		echo 0 > /sys/class/leds/base\:green\:user/brightness
@@ -103,6 +114,8 @@ failed() {
 	if [ $MACHINE = "i.mx6" ]; then
 		echo 0 > /sys/class/leds/igep\:green\:led0/brightness
 		echo heartbeat > /sys/class/leds/igep\:red\:led0/trigger
+		echo 0 > /sys/class/leds/igep\:green\:led1/brightness
+		echo heartbeat > /sys/class/leds/igep\:red\:led1/trigger
 	fi
 	exit 1
 }
@@ -126,20 +139,26 @@ ensure_file() {
 
 prepare() {
 	if [ $MACHINE = "igep0020" ]; then
-		echo 1 > /sys/class/leds/d240\:green/brightness
-		echo 1 > /sys/class/leds/d240\:red/brightness
+		echo heartbeat > /sys/class/leds/d240\:green/trigger
+		echo heartbeat > /sys/class/leds/d240\:red/trigger
+		echo heartbeat > /sys/class/leds/d440\:green/trigger
+		echo heartbeat > /sys/class/leds/d440\:red/trigger
 	fi
 	if [ $MACHINE = "igep0030" ]; then
-		echo 1 > /sys/class/leds/d210\:green/brightness
-		echo 1 > /sys/class/leds/d210\:red/brightness
+		echo heartbeat > /sys/class/leds/d210\:green/trigger
+		echo heartbeat > /sys/class/leds/d210\:red/trigger
+		echo heartbeat > /sys/class/leds/d440\:green/trigger
+		echo heartbeat > /sys/class/leds/d440\:red/trigger
 	fi
 	if [ $MACHINE = "am33xx" ]; then
-		echo 1 > /sys/class/leds/base\:red\:user/brightness
-		echo 1 > /sys/class/leds/base\:green\:user/brightness
+		echo heartbeat > /sys/class/leds/base\:green\:user/trigger
+		echo heartbeat > /sys/class/leds/base\:red\:user/trigger
 	fi
 	if [ $MACHINE = "i.mx6" ]; then
-		echo 1 > /sys/class/leds/igep\:green\:led0/brightness
-		echo 1 > /sys/class/leds/igep\:red\:led0/brightness
+		echo heartbeat > /sys/class/leds/igep\:green\:led0/trigger
+		echo heartbeat > /sys/class/leds/igep\:red\:led0/trigger
+		echo heartbeat > /sys/class/leds/igep\:green\:led1/trigger
+		echo heartbeat > /sys/class/leds/igep\:red\:led1/trigger
 	fi
 }
 
