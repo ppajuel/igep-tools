@@ -263,7 +263,7 @@ populate_boot() {
 	;;
 	"igep0046")
 		# Copy U-boot.imx (RAW mode) at firsts sectors
-		sudo dd if=${TMPDIR}/binary/u-boot.imx of=${MMC} bs=512  seek=2 > /dev/null
+		sudo dd if=${TMPDIR}/binary/u-boot.imx of=${MMC} bs=512  seek=2 2> /dev/null
 		# Copy zImage
 		sudo cp -f ${TMPDIR}/binary/zImage ${TMPDIR}/disk/
 		# Copy Device Trees

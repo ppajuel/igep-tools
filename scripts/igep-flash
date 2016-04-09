@@ -148,16 +148,22 @@ cleanup_workdir() {
 	case "$MACHINE" in
 		"igep0020"| "igep0030" )
 			for mtd in mtdblock1 mtdblock2 ; do
-				umount  ${TMPDIR}/${mtd} || true
+				if mount | grep ${TMPDIR}/${mtd} > /dev/null; then
+					umount  ${TMPDIR}/${mtd} || true
+				fi
 			done
 			;;
 		"am33xx" )
-			umount ${TMPDIR}/ubifs > /dev/null || true
+			if mount | grep ${TMPDIR}/ubifs > /dev/null; then
+				umount ${TMPDIR}/ubifs > /dev/null || true
+			fi
 			ubidetach -p /dev/mtd3 > /dev/null || true
 			;;
 		"i.mx6" )
 			for mtd in "${MMC}p1" "${MMC}p2" ; do
-				umount  ${TMPDIR}/${mtd} || true
+				if mount | grep ${TMPDIR}/${mtd} > /dev/null; then
+					umount  ${TMPDIR}/${mtd} || true
+				fi
 			done
 			;;
 	esac
@@ -221,7 +227,7 @@ cleanup_emmc() {
 
 	for emmc in ${MMCDEV}* ; do
 		if test -n "$emmc"; then
-			umount ${emmc} >/dev/null 2>&1|| true
+			umount ${emmc} >/dev/null 2>&1 || true
 		fi
 	done
 
@@ -259,7 +265,7 @@ prepare_partitions() {
 	sleep 3
 	for emmc in ${MMCDEV}* ; do
 		if test -n "$emmc"; then
-			umount ${emmc} >/dev/null 2>&1|| true
+			umount ${emmc} >/dev/null 2>&1 || true
 		fi
 	done
 
@@ -289,8 +295,8 @@ flash_emmc_image() {
 	fi
 
 	# Create temporary partition directories
-	mkdir -p ${TMPDIR}/"${MMC}p1"
-	mkdir -p ${TMPDIR}/"${MMC}p2"
+	mkdir -p ${TMPDIR}/"${MMC}p1" 2> /dev/null
+	mkdir -p ${TMPDIR}/"${MMC}p2" 2> /dev/null
 
 	# Mount boot and rootfs partition
 	mount -t vfat "${MMCDEV}p1" ${TMPDIR}/"${MMC}p1"
@@ -332,7 +338,7 @@ flash_emmc_image() {
 		failed "writting to /sys/block/${MMC}/force_ro with error $?"
 	fi
 	sync
-	dd if=${TMPDIR}/"${MMC}p2"/boot/u-boot.imx of=${MMCDEV} bs=512  seek=2  > /dev/null
+	dd if=${TMPDIR}/"${MMC}p2"/boot/u-boot.imx of=${MMCDEV} bs=512  seek=2  2> /dev/null
 	if [ $? != 0 ]; then
 		failed "writting to ${MMCDEV} with error $?"
 	fi
@@ -500,10 +506,10 @@ cleanup_workdir
 ensure_file ${IMAGE_FILE}
 
 if [ "$SKIP_NANDTEST" = "false" ]; then
-	echo ""
-	echo "Mark blocks bad if they appear so "
-	echo ""
 	if [ $MACHINE = "igep0020" ] || [ $MACHINE = "igep0030" ] || [ $MACHINE = "am33xx" ] ; then
+		echo ""
+		echo "Mark blocks bad if they appear so "
+		echo ""
 		mark_bad_blocks
 	fi
 fi
