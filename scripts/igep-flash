@@ -174,7 +174,7 @@ cleanup_workdir() {
 			;;
 		"am33xx" )
 			if mount | grep ${TMPDIR}/ubifs > /dev/null; then
-				umount ${TMPDIR}/ubifs > /dev/null || true
+				umount ${TMPDIR}/ubifs || true
 			fi
 			ubidetach -p /dev/mtd3 > /dev/null || true
 			;;
@@ -186,8 +186,6 @@ cleanup_workdir() {
 			done
 			;;
 	esac
-
-	rm -fr ${TMPDIR} || true
 }
 
 # mark bad blocks
@@ -208,6 +206,11 @@ flash_image() {
 	for i in 0 1 2; do
 		flash_erase /dev/mtd${i} 0 0 || failed "erasing partitions"
 	done
+
+	if [ -z "${TMPDIR}" ]; then
+		echo "Warning: The ${TMPDIR} directory exist, must be removed!"
+		rm -fr ${TMPDIR}
+	fi
 
 	for mtd in mtdblock1 mtdblock2 ; do
 		mkdir -p ${TMPDIR}/${mtd}
@@ -376,6 +379,11 @@ flash_ubi_image() {
 	for i in 0 1 2 3; do
 		flash_erase /dev/mtd${i} 0 0 || failed "erasing partitions"
 	done
+
+	if [ -z "${TMPDIR}" ]; then
+		echo "Warning: The ${TMPDIR} directory exist, must be removed!"
+		rm -fr ${TMPDIR}
+	fi
 
 	# create working dir if doesn't exists
 	mkdir -p ${TMPDIR}/ubifs
