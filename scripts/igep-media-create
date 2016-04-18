@@ -290,7 +290,7 @@ populate_rootfs() {
 	mkdir -p ${TMPDIR}/binary || true
 	sudo mount ${MMC2} ${TMPDIR}/disk
 	# uncompress the rootfs
-	sudo tar -jxf ${IMAGE_FILE} -C ${TMPDIR}/disk/
+	sudo tar -xf ${IMAGE_FILE} -C ${TMPDIR}/disk/
 
 	case "$MACHINE" in
 	"igep0020"| "igep0030" | "igep0032" | "igep0033")
