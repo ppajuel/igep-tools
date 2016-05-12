@@ -482,8 +482,10 @@ exit
 # Main
 # -----------------------------------------------------------------------------
 # These packages are required
+if [ $MACHINE = "igep0020" ] || [ $MACHINE = "igep0030" ] || [ $MACHINE = "am33xx" ] ; then
 ensure_command flash_erase
 ensure_command nandtest
+fi
 ensure_command mount
 ensure_command umount
 ensure_command tar
