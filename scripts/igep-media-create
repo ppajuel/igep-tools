@@ -76,6 +76,7 @@ CYLINDER_ARG=""
 # Environment
 DIR=$PWD
 TMPDIR="$PWD/tmp-workdir"
+SKIP_FLASHIMAGE="false"
 
 # These commands are required
 ensure_command uuidgen uuid-runtime
@@ -314,27 +315,28 @@ populate_rootfs() {
 	;;
 	esac
 
-	# put the image into firmware directory, useful for flash current image
-	sudo mkdir -p ${TMPDIR}/disk/opt/firmware
-	sudo cp -pL ${IMAGE_FILE} ${TMPDIR}/disk/opt/firmware
-	if [ -f ${DIR}/README ]; then
-		sudo cp ${DIR}/README ${TMPDIR}/disk/opt/firmware
-	else
-		echo ""
-		echo "Note: README file not found, seems you're running this script outside firmware directory."
-		echo "      The readme file is not being copied to the /opt/firmware."
-		echo ""
+	if [ "$SKIP_FLASHIMAGE" = "false" ]; then
+		# put the image into firmware directory, useful for flash current image
+		sudo mkdir -p ${TMPDIR}/disk/opt/firmware
+		sudo cp -pL ${IMAGE_FILE} ${TMPDIR}/disk/opt/firmware
+		if [ -f ${DIR}/README ]; then
+			sudo cp ${DIR}/README ${TMPDIR}/disk/opt/firmware
+		else
+			echo ""
+			echo "Note: README file not found, seems you're running this script outside firmware directory."
+			echo "      The readme file is not being copied to the /opt/firmware."
+			echo ""
+		fi
+		if [ -f ${TMPDIR}/disk/etc/issue ]; then
+			# create a link to the firmware version
+			sudo ln -snf ../../etc/issue ${TMPDIR}/disk/opt/firmware/VERSION
+		else
+			echo ""
+			echo "Note: ISSUE file not found, seems you're using non-standard root file system."
+			echo "      The VERSION file is not being created to the /opt/firmware."
+			echo ""
+		fi
 	fi
-	if [ -f ${TMPDIR}/disk/etc/issue ]; then
-		# create a link to the firmware version
-		sudo ln -snf ../../etc/issue ${TMPDIR}/disk/opt/firmware/VERSION
-	else
-		echo ""
-		echo "Note: ISSUE file not found, seems you're using non-standard root file system."
-		echo "      The VERSION file is not being created to the /opt/firmware."
-		echo ""
-	fi
-
 	# cleanup
 	sync
 	sudo umount ${TMPDIR}/disk || true
@@ -498,6 +500,9 @@ Additional/Optional options:
         yocto - <set as default>
         android
     This option adds some tweaks required by the image type
+
+--skip-flashimage
+    don't install firmware image for flash
  
 --assume-yes
     assume Yes on all queries <dangerous>
@@ -560,6 +565,9 @@ while [ ! -z "$1" ]; do
 			;;
 		--assume-yes)
 			ASSUME_YES="true"
+			;;
+		--skip-flashimage)
+			SKIP_FLASHIMAGE="true"
 			;;
 	esac
 	shift
