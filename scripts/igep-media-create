@@ -159,19 +159,47 @@ create_partitions() {
 		"igep0020"| "igep0030" | "igep0032" | "igep0033")
 			# Create a VFAT partition of 9 cylinders which is about 64M
 			# and a linux partition of the rest
-			sudo sfdisk -D -H $HEADS -S $SECTORS $CYLINDER_ARG $MMC << THEEND
+			SFDISKVERSION="$(sfdisk --version | tr -d [:alpha:][:blank:][:cntrl:][:punct:][:space:])"
+			# Since version 2.26 (2260) sfdisk does not provide the --DOS, --IBM, --DOS-extended, --unhide,
+			# --show-extended, --cylinders, --heads, --sectors, --inside-outer, --not-inside-outer options.
+			if [ "$SFDISKVERSION" -lt "2260" ]
+			then
+				sudo sfdisk -D -H $HEADS -S $SECTORS $CYLINDER_ARG $MMC << THEEND
 ,9,0x0C,*
 ,,,-
 THEEND
+			else
+				sudo sfdisk $MMC <<EOF
+
+label: dos
+
+63,144522,0x0C,*
+144585,,,-
+EOF
+			fi
 		;;
 		"igep0046")
 			# Create a non partitioned area of 1 cylinder
 			# Create a VFAT partition of 8 cylinders which is about 57M
 			# and a linux partition of the rest
-			sudo sfdisk -D -H $HEADS -S $SECTORS $CYLINDER_ARG $MMC << THEEND
+			SFDISKVERSION="$(sfdisk --version | tr -d [:alpha:][:blank:][:cntrl:][:punct:][:space:])"
+			# Since version 2.26 (2260) sfdisk does not provide the --DOS, --IBM, --DOS-extended, --unhide,
+			# --show-extended, --cylinders, --heads, --sectors, --inside-outer, --not-inside-outer options.
+			if [ "$SFDISKVERSION" -lt "2260" ]
+			then
+				sudo sfdisk -D -H $HEADS -S $SECTORS $CYLINDER_ARG $MMC << THEEND
 1,8,0x0C,*
 9,,,-
 THEEND
+			else
+				sudo sfdisk $MMC <<EOF
+
+label: dos
+
+16065,128520,0x0C,*
+144585,,,-
+EOF
+			fi
 		;;
 		esac
 	;;
@@ -181,11 +209,26 @@ THEEND
 			# Create a VFAT partition of 9 cylinders which is about 64M,
 			# a linux partition of 90 cylinders which is about 640M
 			# and a VFAT partition for the rest
-			sudo sfdisk -D -H $HEADS -S $SECTORS $CYLINDER_ARG $MMC << THEEND
+			SFDISKVERSION="$(sfdisk --version | tr -d [:alpha:][:blank:][:cntrl:][:punct:][:space:])"
+			# Since version 2.26 (2260) sfdisk does not provide the --DOS, --IBM, --DOS-extended, --unhide,
+			# --show-extended, --cylinders, --heads, --sectors, --inside-outer, --not-inside-outer options.
+			if [ "$SFDISKVERSION" -lt "2260" ]
+			then
+				sudo sfdisk -D -H $HEADS -S $SECTORS $CYLINDER_ARG $MMC << THEEND
 ,9,0x0C,*
 ,90,,-
 ,,0x0C,-
 THEEND
+			else
+				sudo sfdisk $MMC <<EOF
+
+label: dos
+
+63,144522,0x0C,*
+144585,1445850,,-
+1590435,,0x0C,-
+EOF
+			fi
 		;;
 		*)
 			echo "Error: $MACHINE doesn't support Android OS officially"
