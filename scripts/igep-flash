@@ -225,7 +225,7 @@ flash_image() {
 	echo "Be patient, this may take a few minutes"
 	echo ""
 	# first uncompress the image file to the second partition
-	tar -jxf ${IMAGE_FILE} -C ${TMPDIR}/mtdblock2
+	tar -xf ${IMAGE_FILE} -C ${TMPDIR}/mtdblock2
 	# then, copy kernel image from second partition to the first partition
 	cp ${TMPDIR}/mtdblock2/boot/zImage ${TMPDIR}/mtdblock1
 	# now, create the INI file
@@ -336,7 +336,7 @@ flash_emmc_image() {
 	echo ""
 
 	# uncompress the rootfs
-	tar -jxf ${IMAGE_FILE} -C ${TMPDIR}/"${MMC}p2"
+	tar -xf ${IMAGE_FILE} -C ${TMPDIR}/"${MMC}p2"
 	if [ $? != 0 ]; then
 		failed "Uncompressing the image with error $?"
 	fi
@@ -408,7 +408,7 @@ flash_ubi_image() {
 	echo "Be patient, this may take a few minutes"
 	echo ""
 	# first uncompress the image to the File System partition
-	tar -jxf ${IMAGE_FILE} -C ${TMPDIR}/ubifs
+	tar -xf ${IMAGE_FILE} -C ${TMPDIR}/ubifs
 	if [ $? != 0 ]; then
 		failed "Uncompressing the image with error $?"
 	fi
