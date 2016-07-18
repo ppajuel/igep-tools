@@ -79,6 +79,7 @@ success() {
 		echo heartbeat > /sys/class/leds/d210\:green/trigger
 		echo 0 > /sys/class/leds/d210\:red/brightness
 		echo heartbeat > /sys/class/leds/d440\:green/trigger
+		echo heartbeat > /sys/class/leds/d440:greenrg/trigger
 		echo 0 > /sys/class/leds/d440\:red/brightness
 	fi
 	if [ $MACHINE = "am33xx" ]; then
@@ -105,6 +106,7 @@ failed() {
 		echo 0 > /sys/class/leds/d210\:green/brightness
 		echo heartbeat > /sys/class/leds/d210\:red/trigger
 		echo 0 > /sys/class/leds/d440\:green/brightness
+		echo 0 > /sys/class/leds/d440:greenrg/brightness
 		echo heartbeat > /sys/class/leds/d440\:red/trigger
 	fi
 	if [ $MACHINE = "am33xx" }; then
@@ -148,6 +150,7 @@ prepare() {
 		echo heartbeat > /sys/class/leds/d210\:green/trigger
 		echo heartbeat > /sys/class/leds/d210\:red/trigger
 		echo heartbeat > /sys/class/leds/d440\:green/trigger
+		echo heartbeat > /sys/class/leds/d440:greenrg/trigger
 		echo heartbeat > /sys/class/leds/d440\:red/trigger
 	fi
 	if [ $MACHINE = "am33xx" ]; then
