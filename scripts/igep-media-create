@@ -77,6 +77,7 @@ CYLINDER_ARG=""
 DIR=$PWD
 TMPDIR="$PWD/tmp-workdir"
 SKIP_FLASHIMAGE="false"
+SKIP_CREATEINI="false"
 
 # These commands are required
 ensure_command uuidgen uuid-runtime
@@ -296,14 +297,24 @@ populate_boot() {
 		else
 			# Copy zImage
 			sudo cp -f ${TMPDIR}/binary/zImage ${TMPDIR}/disk/
-			# create INI file based on script arguments
-			create_ini mmc ${TMPDIR}/disk/
+			if [ "$SKIP_CREATEINI" = "false" ]; then
+				# create INI file based on script arguments
+				create_ini mmc ${TMPDIR}/disk/
+				if [ $? != 0 ]; then
+					echo "Error: create_init function failed with error $?"
+					exit 1
+				fi
+			else
+				# Copy igep.ini
+				sudo cp -f ${TMPDIR}/binary/igep.ini ${TMPDIR}/disk/
+				if [ $? != 0 ]; then
+					echo "Error: copy igep.ini file failed with error $?"
+					exit 1
+				fi
+			fi
 		fi
 
-		if [ $? != 0 ]; then
-			echo "Error: create_init function failed with error $?"
-			exit 1
-		fi
+
 	;;
 	"igep0046")
 		# Copy U-boot.imx (RAW mode) at firsts sectors
@@ -342,6 +353,10 @@ populate_rootfs() {
 		sudo cp -pL ${TMPDIR}/disk/boot/MLO ${TMPDIR}/binary/
 		# get zImage from rootfs
 		sudo cp -pL ${TMPDIR}/disk/boot/zImage ${TMPDIR}/binary/
+		if [ "$SKIP_CREATEINI" = "true" ]; then
+			# get igep.ini from rootfs
+			sudo cp -pL ${TMPDIR}/disk/boot/igep.ini ${TMPDIR}/binary/
+		fi
 
 		if [ "$BOOTLOADER_TYPE" = "uboot" ]; then
 			# get U-boot.img from rootfs
@@ -546,6 +561,9 @@ Additional/Optional options:
 
 --skip-flashimage
     don't install firmware image for flash
+
+--skip-createini
+    copy custom stored igep.ini file instead use create_ini function
  
 --assume-yes
     assume Yes on all queries <dangerous>
@@ -611,6 +629,9 @@ while [ ! -z "$1" ]; do
 			;;
 		--skip-flashimage)
 			SKIP_FLASHIMAGE="true"
+			;;
+		--skip-createini)
+			SKIP_CREATEINI="true"
 			;;
 	esac
 	shift
