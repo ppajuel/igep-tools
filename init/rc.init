@@ -24,7 +24,7 @@ fi
 
 case "$MACHINE" in
 	"igep0020"| "igep0030" )
-		IMAGE_FILE="/opt/firmware/demo-image-sato-igep00x0.tar*"
+		IMAGE_FILE="/opt/firmware/demo-image-sato-igep00x0*.tar*"
 		;;
 	"am33xx" )
 		IMAGE_FILE="/opt/firmware/demo-image-sato-igep0033.tar*"
