@@ -78,6 +78,7 @@ DIR=$PWD
 TMPDIR="$PWD/tmp-workdir"
 SKIP_FLASHIMAGE="false"
 SKIP_CREATEINI="false"
+CP_UENV="false"
 
 # These commands are required
 ensure_command uuidgen uuid-runtime
@@ -294,6 +295,15 @@ populate_boot() {
 		if [ "$BOOTLOADER_TYPE" = "uboot" ]; then
 			# Copy U-boot.img
 			sudo cp -f ${TMPDIR}/binary/u-boot.img ${TMPDIR}/disk/
+
+			if [ "$CP_UENV" = "true" ] && [ "$MACHINE" = "igep0033" ]; then
+				# Copy uEnv.txt
+				sudo cp -f ${TMPDIR}/binary/uEnv.txt ${TMPDIR}/disk/
+				if [ $? != 0 ]; then
+					echo "Error: copy uEnv.txt file failed with error $?"
+					exit 1
+				fi
+			fi
 		else
 			# Copy zImage
 			sudo cp -f ${TMPDIR}/binary/zImage ${TMPDIR}/disk/
@@ -313,8 +323,6 @@ populate_boot() {
 				fi
 			fi
 		fi
-
-
 	;;
 	"igep0046")
 		# Copy U-boot.imx (RAW mode) at firsts sectors
@@ -356,6 +364,15 @@ populate_rootfs() {
 		if [ "$SKIP_CREATEINI" = "true" ]; then
 			# get igep.ini from rootfs
 			sudo cp -pL ${TMPDIR}/disk/boot/igep.ini ${TMPDIR}/binary/
+		fi
+
+		if [ "$CP_UENV" = "true" ]; then
+			if [ "$MACHINE" = "igep0033" ]; then
+				# get uEnv.txt from rootfs
+				sudo cp -pL ${TMPDIR}/disk/boot/uEnv.txt ${TMPDIR}/binary/
+			else
+				echo "--cp-uenv option not supported at $MACHINE machine. Skipped"
+			fi
 		fi
 
 		if [ "$BOOTLOADER_TYPE" = "uboot" ]; then
@@ -564,6 +581,9 @@ Additional/Optional options:
 
 --skip-createini
     copy custom stored igep.ini file instead use create_ini function
+
+--cp-uenv
+	copy uEnv.txt file to boot partition (option only available at IGEP0033 machine)
  
 --assume-yes
     assume Yes on all queries <dangerous>
@@ -632,6 +652,9 @@ while [ ! -z "$1" ]; do
 			;;
 		--skip-createini)
 			SKIP_CREATEINI="true"
+			;;
+		--cp-uenv)
+			CP_UENV="true"
 			;;
 	esac
 	shift
