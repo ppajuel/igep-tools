@@ -392,13 +392,8 @@ flash_ubi_image() {
 	mkdir -p ${TMPDIR}/ubifs
 
 	# start flashing
-
-	# If NAND flash supports sub-pages, UBI will use them. But sometimes you
-	# may want to ask UBI to ignore sub-pages, On AM335x looks like there is
-	# a problem handling sub-pages, for that reason we Force UBI to ignore
-	# sub-pages with (--vid-hdr-offset 2048)
-	# ubiformat -O 2048 /dev/mtd3
-	ubiattach --vid-hdr-offset 2048 -p /dev/mtd3
+	ubiformat /dev/mtd3
+	ubiattach -p /dev/mtd3
 	# set volume size to maximum available size
 	ubimkvol /dev/ubi0 -N filesystem -m
 	mount -t ubifs ubi0:filesystem ${TMPDIR}/ubifs
@@ -440,11 +435,6 @@ flash_ubi_image() {
 	umount ${TMPDIR}/ubifs
 	if [ $? != 0 ]; then
 		failed "umounting ubifs with error $?"
-	fi
-
-	ubidetach -p /dev/mtd3
-	if [ $? != 0 ]; then
-		failed "detaching /dev/mtd3 with error $?"
 	fi
 }
 
