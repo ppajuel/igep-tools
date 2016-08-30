@@ -83,8 +83,12 @@ success() {
 		echo 0 > /sys/class/leds/d440\:red/brightness
 	fi
 	if [ $MACHINE = "am33xx" ]; then
-		echo heartbeat > /sys/class/leds/base\:green\:user/trigger
-		echo 0 > /sys/class/leds/base\:red\:user/brightness
+		# BASE0033 has base:*:user LED, but BASE0040 doesn't have it
+		echo heartbeat > /sys/class/leds/base\:green\:user/trigger || true
+		echo 0 > /sys/class/leds/base\:red\:user/brightness || true
+		echo heartbeat > /sys/class/leds/com\:green\:user/trigger
+		# IGEP0034 has com:red:user LED, but IGEP0033 cannot be control it
+		echo 0 > /sys/class/leds/com\:red\:user/brightness || true
 	fi
 	if [ $MACHINE = "i.mx6" ]; then
 		echo heartbeat > /sys/class/leds/igep\:green\:led0/trigger
@@ -110,8 +114,12 @@ failed() {
 		echo heartbeat > /sys/class/leds/d440\:red/trigger
 	fi
 	if [ $MACHINE = "am33xx" }; then
-		echo 0 > /sys/class/leds/base\:green\:user/brightness
-		echo heartbeat > /sys/class/leds/base\:red\:user/trigger
+		# BASE0033 has base:*:user LED, but BASE0040 doesn't have it
+		echo 0 > /sys/class/leds/base\:green\:user/brightness || true
+		echo heartbeat > /sys/class/leds/base\:red\:user/trigger || true
+		echo 0 > /sys/class/leds/com\:green\:user/brightness
+		# IGEP0034 has com:red:user LED, but IGEP0033 cannot be control it
+		echo heartbeat > /sys/class/leds/com\:red\:user/trigger || true
 	fi
 	if [ $MACHINE = "i.mx6" ]; then
 		echo 0 > /sys/class/leds/igep\:green\:led0/brightness
@@ -154,8 +162,12 @@ prepare() {
 		echo heartbeat > /sys/class/leds/d440\:red/trigger
 	fi
 	if [ $MACHINE = "am33xx" ]; then
-		echo heartbeat > /sys/class/leds/base\:green\:user/trigger
-		echo heartbeat > /sys/class/leds/base\:red\:user/trigger
+		# BASE0033 has base:*:user LED, but BASE0040 doesn't have it
+		echo heartbeat > /sys/class/leds/base\:green\:user/trigger || true
+		echo heartbeat > /sys/class/leds/base\:red\:user/trigger || true
+		echo heartbeat > /sys/class/leds/com\:green\:user/trigger
+		# IGEP0034 has com:red:user LED, but IGEP0033 cannot be control it
+		echo heartbeat > /sys/class/leds/com\:red\:user/trigger || true
 	fi
 	if [ $MACHINE = "i.mx6" ]; then
 		echo heartbeat > /sys/class/leds/igep\:green\:led0/trigger
