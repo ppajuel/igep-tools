@@ -113,7 +113,7 @@ failed() {
 		echo 0 > /sys/class/leds/d440:greenrg/brightness
 		echo heartbeat > /sys/class/leds/d440\:red/trigger
 	fi
-	if [ $MACHINE = "am33xx" }; then
+	if [ $MACHINE = "am33xx" ]; then
 		# BASE0033 has base:*:user LED, but BASE0040 doesn't have it
 		echo 0 > /sys/class/leds/base\:green\:user/brightness || true
 		echo heartbeat > /sys/class/leds/base\:red\:user/trigger || true
