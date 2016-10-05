@@ -158,7 +158,7 @@ create_partitions() {
 	case "$IMAGE_TYPE" in
 	yocto)
 		case "$MACHINE" in
-		"igep0020"| "igep0030" | "igep0032" | "igep0033")
+		"igep0020" | "igep0030" | "igep0032" | "igepam335x")
 			# Create a VFAT partition of 9 cylinders which is about 64M
 			# and a linux partition of the rest
 			SFDISKVERSION="$(sfdisk --version | tr -d [:alpha:][:blank:][:cntrl:][:punct:][:space:])"
@@ -207,7 +207,7 @@ EOF
 	;;
 	android)
 		case "$MACHINE" in
-		"igep0020"| "igep0030" | "igep0032" )
+		"igep0020" | "igep0030" | "igep0032" )
 			# Create a VFAT partition of 9 cylinders which is about 64M,
 			# a linux partition of 90 cylinders which is about 640M
 			# and a VFAT partition for the rest
@@ -288,7 +288,7 @@ populate_boot() {
 	sudo mount ${MMC1} ${TMPDIR}/disk
 
 	case "$MACHINE" in
-	"igep0020"| "igep0030" | "igep0032" | "igep0033")
+	"igep0020" | "igep0030" | "igep0032" | "igepam335x")
 		# Copy IGEP-X-Loader or U-boot SPL
 		sudo cp -f ${TMPDIR}/binary/MLO ${TMPDIR}/disk/
 
@@ -296,7 +296,7 @@ populate_boot() {
 			# Copy U-boot.img
 			sudo cp -f ${TMPDIR}/binary/u-boot.img ${TMPDIR}/disk/
 
-			if [ "$CP_UENV" = "true" ] && [ "$MACHINE" = "igep0033" ]; then
+			if [ "$CP_UENV" = "true" ] && [ "$MACHINE" = "igepam335x" ]; then
 				# Copy uEnv.txt
 				sudo cp -f ${TMPDIR}/binary/uEnv.txt ${TMPDIR}/disk/
 				if [ $? != 0 ]; then
@@ -356,7 +356,7 @@ populate_rootfs() {
 	sudo tar -xf ${IMAGE_FILE} -C ${TMPDIR}/disk/
 
 	case "$MACHINE" in
-	"igep0020"| "igep0030" | "igep0032" | "igep0033")
+	"igep0020" | "igep0030" | "igep0032" | "igepam335x")
 		# get IGEP-X-Loader or U-boot SPL from rootfs
 		sudo cp -pL ${TMPDIR}/disk/boot/MLO ${TMPDIR}/binary/
 		# get zImage from rootfs
@@ -367,7 +367,7 @@ populate_rootfs() {
 		fi
 
 		if [ "$CP_UENV" = "true" ]; then
-			if [ "$MACHINE" = "igep0033" ]; then
+			if [ "$MACHINE" = "igepam335x" ]; then
 				# get uEnv.txt from rootfs
 				sudo cp -pL ${TMPDIR}/disk/boot/uEnv.txt ${TMPDIR}/binary/
 			else
@@ -477,7 +477,7 @@ check_machine() {
 		unset IN_VALID_MACHINE
 	fi
 
-	if test "-$MACHINE-" = "-igep0033-"; then
+	if test "-$MACHINE-" = "-igepam335x-"; then
 		unset IN_VALID_MACHINE
 	fi
 
@@ -552,6 +552,7 @@ required options:
         igep0030 - IGEP COM MODULE
         igep0032 - IGEP COM PROTON
         igep0033 - IGEP COM AQUILA
+        igep0034 - IGEP SMARC AM335x
         igep0046 - IGEP SMARC iMX6
 
 Additional/Optional options:
@@ -583,7 +584,7 @@ Additional/Optional options:
     copy custom stored igep.ini file instead use create_ini function
 
 --cp-uenv
-	copy uEnv.txt file to boot partition (option only available at IGEP0033 machine)
+	copy uEnv.txt file to boot partition (option only available at IGEP AM335x machines)
  
 --assume-yes
     assume Yes on all queries <dangerous>
@@ -628,6 +629,9 @@ while [ ! -z "$1" ]; do
 		--machine)
 			checkparm $2
 			MACHINE="$2"
+			if [ "$MACHINE" = "igep0033" ] || [ "$MACHINE" = "igep0034" ]; then
+				MACHINE="igepam335x"
+			fi
 			check_machine
 			;;
 		--bootloader)
@@ -690,10 +694,10 @@ fi
 # If the bootloader type is not specified set the default
 if test "-$BOOTLOADER_TYPE-" = "--"; then
 	case "$MACHINE" in
-		"igep0020"| "igep0030" | "igep0032")
+		"igep0020" | "igep0030" | "igep0032")
 			BOOTLOADER_TYPE="igep"
 			;;
-		"igep0033")
+		"igepam335x")
 			BOOTLOADER_TYPE="uboot"
 			;;
 		"igep0046")

@@ -27,7 +27,7 @@ case "$MACHINE" in
 		IMAGE_FILE="/opt/firmware/demo-image-sato-igep00x0*.tar*"
 		;;
 	"am33xx" )
-		IMAGE_FILE="/opt/firmware/demo-image-sato-igep0033.tar*"
+		IMAGE_FILE="/opt/firmware/demo-image-*-igep00*.tar*"
 		;;
 	"i.mx6" )
 		IMAGE_FILE="/opt/firmware/isee-image-dev-imx6*-igep0046.tar*"
