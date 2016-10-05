@@ -21,7 +21,7 @@
 # Pau Pajuelo Llagostera <ppajuelo [at] iseebcn.com>
 #
 
-__REVISION__="2"
+__REVISION__="3"
 
 # Required environment variables :
 #     MACHINE
