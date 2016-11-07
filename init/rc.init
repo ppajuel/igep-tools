@@ -30,7 +30,7 @@ case "$MACHINE" in
 		IMAGE_FILE="/opt/firmware/demo-image-*-igep00*.tar*"
 		;;
 	"i.mx6" )
-		IMAGE_FILE="/opt/firmware/isee-image-dev-imx6*-igep0046.tar*"
+		IMAGE_FILE="/opt/firmware/isee-fsl-image-dev-imx6*-igep0046.tar*"
 		;;
 esac
 
