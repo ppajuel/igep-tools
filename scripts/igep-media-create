@@ -708,7 +708,7 @@ fi
 
 prepare_partitions
 
-if [ -z "${TMPDIR}" ]; then
+if [ -e "${TMPDIR}" ]; then
     echo "Warning: The ${TMPDIR} directory exist, must be removed!"
     sudo rm -fr ${TMPDIR}
 fi

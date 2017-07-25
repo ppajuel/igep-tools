@@ -222,7 +222,7 @@ flash_image() {
 		flash_erase /dev/mtd${i} 0 0 || failed "erasing partitions"
 	done
 
-	if [ -z "${TMPDIR}" ]; then
+	if [ -e "${TMPDIR}" ]; then
 		echo "Warning: The ${TMPDIR} directory exist, must be removed!"
 		rm -fr ${TMPDIR}
 	fi
